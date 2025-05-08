@@ -14,8 +14,14 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Search, AlertCircle, BookOpen, Link as LinkIcon, MessageSquareText, FileText, Brain } from "lucide-react";
-import type { GenerateMedicalTopicSummaryOutput } from "@/ai/flows/generate-medical-topic-summary-flow";
+import { Loader2, Search, AlertCircle, BookOpen, Link as LinkIcon, MessageSquareText, FileText, Brain, Eye, EyeOff } from "lucide-react";
+import type { GenerateMedicalTopicSummaryOutput as AIOutputType } from "@/ai/flows/generate-medical-topic-summary-flow";
+
+// Make keyPointsSummary optional as it might not always be present if the flow changes or fails partially
+interface GenerateMedicalTopicSummaryOutput extends AIOutputType {
+  keyPointsSummary?: string[];
+}
+
 
 interface SearchResultItem {
   source: string;
@@ -39,6 +45,8 @@ export function MedicalKnowledgeSearch() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedSummaries, setExpandedSummaries] = useState<Record<number, boolean>>({});
+  const [showDetailedSummary, setShowDetailedSummary] = useState(false);
+
 
   const toggleSummaryExpansion = (index: number) => {
     setExpandedSummaries(prev => ({ ...prev, [index]: !prev[index] }));
@@ -55,10 +63,9 @@ export function MedicalKnowledgeSearch() {
     setResults([]);
     setAiComprehensiveSummary(null);
     setExpandedSummaries({});
+    setShowDetailedSummary(false); // Reset detailed view on new search
 
     try {
-      // Always request AI summary when 'all' sources or if a specific source that benefits from it is chosen.
-      // For simplicity, we'll request it if source is 'all' or 'wikipedia' or 'pubmed' as these are info-dense.
       const shouldRequestAISummary = source === "all" || source === "wikipedia" || source === "pubmed";
       
       const response = await fetch(
@@ -87,13 +94,14 @@ export function MedicalKnowledgeSearch() {
   };
 
   const renderMarkdownList = (text: string) => {
-    // Basic markdown for lists (assuming items start with "- " or "* ")
     const lines = text.split('\n');
     return lines.map((line, index) => {
       if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
         return <li key={index} className="ml-4 list-disc">{line.trim().substring(2)}</li>;
       }
-      return <p key={index}>{line}</p>;
+      // Allow simple bolding with **text**
+      const boldedLine = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      return <p key={index} dangerouslySetInnerHTML={{ __html: boldedLine }}></p>;
     });
   };
 
@@ -165,33 +173,53 @@ export function MedicalKnowledgeSearch() {
                     <CardTitle className="text-xl text-primary flex items-center">
                       <Brain className="mr-2 h-6 w-6" /> AI Comprehensive Summary: {aiComprehensiveSummary.topic}
                     </CardTitle>
-                    <CardDescription>Detailed overview covering etiology, symptoms, diagnosis, treatment, and prognosis.</CardDescription>
+                    <CardDescription>Key points and detailed overview covering etiology, symptoms, diagnosis, treatment, and prognosis.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3 pt-4">
-                    <div>
-                      <h4 className="font-semibold text-md text-foreground">Overall Summary:</h4>
-                      <p className="text-sm text-muted-foreground">{aiComprehensiveSummary.overallSummary}</p>
-                    </div>
-                     <div>
-                      <h4 className="font-semibold text-md text-foreground">Etiology (Causes & Risk Factors):</h4>
-                      <div className="text-sm text-muted-foreground prose prose-sm max-w-none">{renderMarkdownList(aiComprehensiveSummary.etiology)}</div>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-md text-foreground">Symptoms:</h4>
-                      <div className="text-sm text-muted-foreground prose prose-sm max-w-none">{renderMarkdownList(aiComprehensiveSummary.symptoms)}</div>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-md text-foreground">Diagnosis:</h4>
-                      <div className="text-sm text-muted-foreground prose prose-sm max-w-none">{renderMarkdownList(aiComprehensiveSummary.diagnosis)}</div>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-md text-foreground">Treatment:</h4>
-                      <div className="text-sm text-muted-foreground prose prose-sm max-w-none">{renderMarkdownList(aiComprehensiveSummary.treatment)}</div>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-md text-foreground">Prognosis:</h4>
-                      <div className="text-sm text-muted-foreground prose prose-sm max-w-none">{renderMarkdownList(aiComprehensiveSummary.prognosis)}</div>
-                    </div>
+                    {aiComprehensiveSummary.keyPointsSummary && aiComprehensiveSummary.keyPointsSummary.length > 0 && (
+                      <div className="mb-4">
+                        <h4 className="font-semibold text-md text-foreground">Key Points:</h4>
+                        <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                          {aiComprehensiveSummary.keyPointsSummary.map((point, index) => (
+                            <li key={`kp-${index}`}>{point}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <Button onClick={() => setShowDetailedSummary(!showDetailedSummary)} variant="outline" size="sm" className="mb-3">
+                      {showDetailedSummary ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+                      {showDetailedSummary ? "Hide Detailed Summary" : "Show Detailed Summary"}
+                    </Button>
+
+                    {showDetailedSummary && (
+                      <div className="space-y-3 animate-accordion-down">
+                        <div>
+                          <h4 className="font-semibold text-md text-foreground">Overall Summary:</h4>
+                          <p className="text-sm text-muted-foreground">{aiComprehensiveSummary.overallSummary}</p>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-md text-foreground">Etiology (Causes & Risk Factors):</h4>
+                          <div className="text-sm text-muted-foreground prose prose-sm max-w-none">{renderMarkdownList(aiComprehensiveSummary.etiology)}</div>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-md text-foreground">Symptoms:</h4>
+                          <div className="text-sm text-muted-foreground prose prose-sm max-w-none">{renderMarkdownList(aiComprehensiveSummary.symptoms)}</div>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-md text-foreground">Diagnosis:</h4>
+                          <div className="text-sm text-muted-foreground prose prose-sm max-w-none">{renderMarkdownList(aiComprehensiveSummary.diagnosis)}</div>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-md text-foreground">Treatment:</h4>
+                          <div className="text-sm text-muted-foreground prose prose-sm max-w-none">{renderMarkdownList(aiComprehensiveSummary.treatment)}</div>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-md text-foreground">Prognosis:</h4>
+                          <div className="text-sm text-muted-foreground prose prose-sm max-w-none">{renderMarkdownList(aiComprehensiveSummary.prognosis)}</div>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -279,3 +307,4 @@ export function MedicalKnowledgeSearch() {
     </div>
   );
 }
+
