@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, type ChangeEvent } from "react";
@@ -72,7 +71,7 @@ export function MedicalKnowledgeSearch() {
       if (file.size > 10 * 1024 * 1024) { // 10MB limit
         setError("File size exceeds 10MB. Please choose a smaller file.");
         setSelectedFile(null);
-        event.target.value = "";
+        event.target.value = ""; // Reset file input
         return;
       }
        // Basic check for generally supported types
@@ -81,7 +80,7 @@ export function MedicalKnowledgeSearch() {
       if (!allowedTypes.includes(file.type) && !['txt', 'csv'].includes(fileExtension || '')) {
            setError(`Unsupported file type: ${file.type || fileExtension}. Supported: PDF, DOCX, TXT, CSV, Images.`);
            setSelectedFile(null);
-           event.target.value = "";
+           event.target.value = ""; // Reset file input
            return;
       }
       setSelectedFile(file);
@@ -105,63 +104,98 @@ export function MedicalKnowledgeSearch() {
     setShowDetailedTopicSummary(false);
     setShowDetailedDiagnosis(false);
 
-    if (selectedFile) {
-      // Handle file upload for DIAGNOSIS/ANALYSIS
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      try {
-        const response = await fetch("/api/diagnosis", { // Call the new diagnosis endpoint
-          method: "POST",
-          body: formData,
+    try {
+        if (selectedFile) {
+        // Handle file upload for DIAGNOSIS/ANALYSIS
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+
+        const response = await fetch("/api/diagnosis", {
+            method: "POST",
+            body: formData,
         });
+
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `File analysis failed: ${response.statusText}`);
+            let errorText = `File analysis failed: ${response.statusText} (${response.status})`;
+            try {
+            const errorData = await response.json();
+            errorText = errorData.error || errorText;
+            } catch (jsonError) {
+            try {
+                const text = await response.text();
+                if (text) errorText = text; // Use the response text if available
+            } catch (textError) {
+                 console.error("Failed to read error response body:", textError);
+            }
+            }
+            throw new Error(errorText);
         }
-        const data: { diagnosis_result: any, result_type: 'document_analysis' | 'image_analysis' } = await response.json();
-        setAiDiagnosisResult({ ...data.diagnosis_result, result_type: data.result_type });
 
-        // Check if the result is minimal or empty
-        if (data.result_type === 'document_analysis' && !data.diagnosis_result.overallSummary && !(data.diagnosis_result.keyPointsSummary && data.diagnosis_result.keyPointsSummary.length > 0)) {
-            setError("AI could not extract a meaningful summary from the uploaded document.");
-        } else if (data.result_type === 'image_analysis' && !data.diagnosis_result.overallAssessment && !(data.diagnosis_result.detectedAnomalies && data.diagnosis_result.detectedAnomalies.length > 0)) {
-             setError("AI could not provide a meaningful analysis for the uploaded image.");
+        // If response.ok is true, try parsing JSON
+        try {
+            const data: { diagnosis_result: any, result_type: 'document_analysis' | 'image_analysis' } = await response.json();
+            setAiDiagnosisResult({ ...data.diagnosis_result, result_type: data.result_type });
+
+            // Check if the result is minimal or empty
+            if (data.result_type === 'document_analysis' && !data.diagnosis_result.overallSummary && !(data.diagnosis_result.keyPointsSummary && data.diagnosis_result.keyPointsSummary.length > 0)) {
+                setError("AI could not extract a meaningful summary from the uploaded document.");
+            } else if (data.result_type === 'image_analysis' && !data.diagnosis_result.overallAssessment && !(data.diagnosis_result.detectedAnomalies && data.diagnosis_result.detectedAnomalies.length > 0)) {
+                setError("AI could not provide a meaningful analysis for the uploaded image.");
+            }
+        } catch (jsonError: any) {
+            console.error("Failed to parse JSON response from /api/diagnosis:", jsonError);
+            setError("Received an invalid response from the server after successful request. " + jsonError.message);
         }
 
-      } catch (err: any) {
-        setError(err.message || "Failed to analyze uploaded file.");
-        console.error("Diagnosis API error:", err);
-      }
-    } else if (query.trim()) {
-      // Handle text-based SEARCH
-      try {
+        } else if (query.trim()) {
+        // Handle text-based SEARCH
         const shouldRequestAISummary = true;
         const response = await fetch(
-          `/api/medical-search?query=${encodeURIComponent(query)}&source=${source}&summarize=${shouldRequestAISummary}`
+            `/api/medical-search?query=${encodeURIComponent(query)}&source=${source}&summarize=${shouldRequestAISummary}`
         );
+
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            let errorText = `Search failed: ${response.statusText} (${response.status})`;
+            try {
+            const errorData = await response.json();
+            errorText = errorData.error || errorText;
+            } catch (jsonError) {
+             try {
+                const text = await response.text();
+                if (text) errorText = text; // Use the response text if available
+             } catch (textError) {
+                console.error("Failed to read error response body:", textError);
+             }
+            }
+            throw new Error(errorText);
         }
-        const data: MedicalSearchResponse = await response.json();
 
-        if (data.aiComprehensiveSummary) {
-          setAiComprehensiveSummary(data.aiComprehensiveSummary);
-        }
-        setSearchResults(data.results);
+        // If response.ok is true, try parsing JSON
+        try {
+            const data: MedicalSearchResponse = await response.json();
 
-        if (!data.aiComprehensiveSummary && data.results.length === 0) {
-          setError("No results found for your query. Try a broader term or different source.");
+            if (data.aiComprehensiveSummary) {
+            setAiComprehensiveSummary(data.aiComprehensiveSummary);
+            }
+            setSearchResults(data.results);
+
+            if (!data.aiComprehensiveSummary && data.results.length === 0) {
+            setError("No results found for your query. Try a broader term or different source.");
+            }
+        } catch (jsonError: any) {
+            console.error("Failed to parse JSON response from /api/medical-search:", jsonError);
+            setError("Received an invalid response from the server after successful request. " + jsonError.message);
         }
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch search results.");
-        console.error("Search API error:", err);
-      }
-    } else {
-       setError("Please enter a search term or select a file to analyze.");
+        } else {
+            setError("Please enter a search term or select a file to analyze.");
+        }
+    } catch (err: any) {
+        setError(err.message || "An unexpected error occurred.");
+        console.error("Form submission error:", err);
+    } finally {
+        setIsLoading(false);
     }
-    setIsLoading(false);
-  };
+  }; // End of handleSubmit
 
   const renderFormattedText = (text: string | undefined) => {
     if (!text) return <p className="text-sm text-muted-foreground">Not available for this section.</p>;
@@ -388,47 +422,47 @@ export function MedicalKnowledgeSearch() {
     <div className="w-full max-w-3xl mx-auto">
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="text-2xl font-semibold text-primary">Medical Knowledge Search &amp; AI Analysis</CardTitle>
+          <CardTitle className="text-2xl font-semibold text-primary">Medical Knowledge Search &amp; Analysis</CardTitle>
           <CardDescription>
              Search ophthalmology topics or upload a document/image (PDF, DOCX, TXT, CSV, JPG, PNG) for AI-powered analysis, summarization, or diagnostic insights.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Text Search Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
-              <div className="space-y-1">
-                  <Label htmlFor="search-query" className="text-xs font-medium text-muted-foreground">Search Medical Topic</Label>
-                  <Input
-                    type="text"
-                    id="search-query"
-                    placeholder="e.g., Glaucoma treatment, OCT..."
-                    value={query}
-                    onChange={(e) => { setQuery(e.target.value); if (selectedFile) { setSelectedFile(null); const fileInput = document.getElementById("file-upload") as HTMLInputElement; if(fileInput) fileInput.value = ""; } }}
-                    className="flex-grow h-10"
-                    aria-label="Search query"
-                    disabled={!!selectedFile}
-                  />
-              </div>
-              <div className="space-y-1">
-                 <Label htmlFor="source-filter" className="text-xs font-medium text-muted-foreground">Filter Sources</Label>
-                  <Select value={source} onValueChange={setSource} disabled={!!selectedFile}>
-                    <SelectTrigger id="source-filter" className="w-full sm:w-[220px] h-10" aria-label="Source filter">
-                      <SelectValue placeholder="Select Source" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Sources &amp; AI Summary</SelectItem>
-                      <SelectItem value="wikipedia">Wikipedia</SelectItem>
-                      <SelectItem value="pubmed">PubMed</SelectItem>
-                      <SelectItem value="medlineplus">MedlinePlus</SelectItem>
-                      <SelectItem value="googlescholar">Google Scholar</SelectItem>
-                      <SelectItem value="google">Google Search</SelectItem>
-                      <SelectItem value="university">University Repositories</SelectItem>
-                      <SelectItem value="aocet">AO CET Ophthalmology</SelectItem>
-                    </SelectContent>
-                  </Select>
-               </div>
+             <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
+                <div className="space-y-1">
+                    <Label htmlFor="search-query" className="text-xs font-medium text-muted-foreground">Search Medical Topic</Label>
+                    <Input
+                        type="text"
+                        id="search-query"
+                        placeholder="e.g., Glaucoma treatment, OCT..."
+                        value={query}
+                        onChange={(e) => { setQuery(e.target.value); if (selectedFile) { setSelectedFile(null); const fileInput = document.getElementById("file-upload") as HTMLInputElement; if(fileInput) fileInput.value = ""; } }}
+                        className="flex-grow h-10"
+                        aria-label="Search query"
+                        disabled={!!selectedFile}
+                    />
+                </div>
+                <div className="space-y-1">
+                    <Label htmlFor="source-filter" className="text-xs font-medium text-muted-foreground">Filter Sources</Label>
+                    <Select value={source} onValueChange={setSource} disabled={!!selectedFile}>
+                        <SelectTrigger id="source-filter" className="w-full sm:w-[220px] h-10" aria-label="Source filter">
+                        <SelectValue placeholder="Select Source" />
+                        </SelectTrigger>
+                        <SelectContent>
+                        <SelectItem value="all">All Sources &amp; AI Summary</SelectItem>
+                        <SelectItem value="wikipedia">Wikipedia</SelectItem>
+                        <SelectItem value="pubmed">PubMed</SelectItem>
+                        <SelectItem value="medlineplus">MedlinePlus</SelectItem>
+                        <SelectItem value="googlescholar">Google Scholar</SelectItem>
+                        <SelectItem value="google">Google Search</SelectItem>
+                        <SelectItem value="university">University Repositories</SelectItem>
+                        <SelectItem value="aocet">AO CET Ophthalmology</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
+
 
             <div className="text-center my-1 text-sm text-muted-foreground">OR</div>
 
