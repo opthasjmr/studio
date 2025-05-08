@@ -129,33 +129,35 @@ export function MedicalKnowledgeSearch() {
 
     try {
         if (useFile && selectedFile) {
-        // Handle file upload for DIAGNOSIS/ANALYSIS
-        const formData = new FormData();
-        formData.append("file", selectedFile);
+            // Handle file upload for DIAGNOSIS/ANALYSIS
+            const formData = new FormData();
+            formData.append("file", selectedFile);
 
-        const response = await fetch("/api/diagnosis", { // Use /api/diagnosis for file analysis
-            method: "POST",
-            body: formData,
-        });
+            const response = await fetch("/api/diagnosis", { // Use /api/diagnosis for file analysis
+                method: "POST",
+                body: formData,
+            });
 
-        if (!response.ok) {
-            let errorText = `File analysis failed: ${response.statusText} (${response.status})`;
-            try {
-            const errorData = await response.json();
-            errorText = errorData.error || errorText;
-            } catch (jsonError) {
-            try {
-                const text = await response.text();
-                if (text) errorText = text; // Use the response text if available
-            } catch (textError) {
-                 console.error("Failed to read error response body:", textError);
+            // Check if the response is successful BEFORE trying to parse JSON
+            if (!response.ok) {
+                let errorText = `File analysis failed: ${response.status} ${response.statusText}`;
+                try {
+                    // Read the response body as text to get more details
+                    const responseBody = await response.text();
+                    // Try parsing it as JSON if possible, otherwise use the raw text
+                    try {
+                        const errorData = JSON.parse(responseBody);
+                        errorText = errorData.error || responseBody || errorText;
+                    } catch (jsonErr) {
+                        errorText = responseBody || errorText;
+                    }
+                } catch (readError) {
+                    console.error("Failed to read error response body:", readError);
+                }
+                throw new Error(errorText);
             }
-            }
-            throw new Error(errorText);
-        }
 
-        // If response.ok is true, try parsing JSON
-        try {
+            // If response.ok is true, parse JSON
             const data: { diagnosis_result: any, result_type: 'document_analysis' | 'image_analysis' } = await response.json();
             setAiDiagnosisResult({ ...data.diagnosis_result, result_type: data.result_type });
 
@@ -165,50 +167,43 @@ export function MedicalKnowledgeSearch() {
             } else if (data.result_type === 'image_analysis' && !data.diagnosis_result.overallAssessment && !(data.diagnosis_result.detectedAnomalies && data.diagnosis_result.detectedAnomalies.length > 0)) {
                 setError("AI could not provide a meaningful analysis for the uploaded image.");
             }
-        } catch (jsonError: any) {
-            console.error("Failed to parse JSON response from /api/diagnosis:", jsonError);
-            setError("Received an invalid response from the server after successful request. " + jsonError.message);
-        }
 
         } else if (useQuery) {
-        // Handle text-based SEARCH
-        const shouldRequestAISummary = true;
-        const response = await fetch(
-            `/api/medical-search?query=${encodeURIComponent(query)}&source=${source}&summarize=${shouldRequestAISummary}`
-        );
+            // Handle text-based SEARCH
+            const shouldRequestAISummary = true;
+            const response = await fetch(
+                `/api/medical-search?query=${encodeURIComponent(query)}&source=${source}&summarize=${shouldRequestAISummary}`
+            );
 
-        if (!response.ok) {
-            let errorText = `Search failed: ${response.statusText} (${response.status})`;
-            try {
-            const errorData = await response.json();
-            errorText = errorData.error || errorText;
-            } catch (jsonError) {
-             try {
-                const text = await response.text();
-                if (text) errorText = text; // Use the response text if available
-             } catch (textError) {
-                console.error("Failed to read error response body:", textError);
-             }
+            // Check if the response is successful BEFORE trying to parse JSON
+            if (!response.ok) {
+                let errorText = `Search failed: ${response.status} ${response.statusText}`;
+                try {
+                    // Read the response body as text to get more details
+                    const responseBody = await response.text();
+                     try {
+                        const errorData = JSON.parse(responseBody);
+                        errorText = errorData.error || responseBody || errorText;
+                    } catch (jsonErr) {
+                        errorText = responseBody || errorText;
+                    }
+                } catch (readError) {
+                    console.error("Failed to read error response body:", readError);
+                }
+                throw new Error(errorText);
             }
-            throw new Error(errorText);
-        }
 
-        // If response.ok is true, try parsing JSON
-        try {
+            // If response.ok is true, parse JSON
             const data: MedicalSearchResponse = await response.json();
 
             if (data.aiComprehensiveSummary) {
-            setAiComprehensiveSummary(data.aiComprehensiveSummary);
+                setAiComprehensiveSummary(data.aiComprehensiveSummary);
             }
             setSearchResults(data.results);
 
             if (!data.aiComprehensiveSummary && data.results.length === 0) {
-            setError("No results found for your query. Try a broader term or different source.");
+                setError("No results found for your query. Try a broader term or different source.");
             }
-        } catch (jsonError: any) {
-            console.error("Failed to parse JSON response from /api/medical-search:", jsonError);
-            setError("Received an invalid response from the server after successful request. " + jsonError.message);
-        }
         }
     } catch (err: any) {
         setError(err.message || "An unexpected error occurred.");
@@ -216,7 +211,7 @@ export function MedicalKnowledgeSearch() {
     } finally {
         setIsLoading(false);
     }
-  }; // End of handleSubmit
+}; // End of handleSubmit
 
   const renderFormattedText = (text: string | undefined) => {
     if (!text) return <p className="text-sm text-muted-foreground">Not available for this section.</p>;
@@ -528,7 +523,7 @@ export function MedicalKnowledgeSearch() {
                      </Button>
                  </div>
             </div>
-            
+
             {selectedFile && (
              <div className="text-xs text-muted-foreground text-center pt-1 flex justify-center items-center gap-2">
                 <span>Selected: {selectedFile.name} ({ (selectedFile.size / 1024).toFixed(2) } KB)</span>
