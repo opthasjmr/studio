@@ -66,6 +66,9 @@ export function MedicalKnowledgeSearch() {
     setShowDetailedSummary(false); // Reset detailed view on new search
 
     try {
+      // Request AI comprehensive summary if "all", "wikipedia", or "pubmed" is selected,
+      // or if any other source that might benefit from a top-level AI summary is chosen.
+      // For now, keeping it simple: request detailed summary if 'all' or if specific sources likely to have rich text.
       const shouldRequestAISummary = source === "all" || source === "wikipedia" || source === "pubmed";
       
       const response = await fetch(
@@ -127,7 +130,7 @@ export function MedicalKnowledgeSearch() {
                 aria-label="Search query"
               />
               <Select value={source} onValueChange={setSource}>
-                <SelectTrigger className="w-full sm:w-[180px]" aria-label="Source filter">
+                <SelectTrigger className="w-full sm:w-[220px]" aria-label="Source filter"> {/* Increased width for longer options */}
                   <SelectValue placeholder="Select Source" />
                 </SelectTrigger>
                 <SelectContent>
@@ -136,6 +139,8 @@ export function MedicalKnowledgeSearch() {
                   <SelectItem value="pubmed">PubMed</SelectItem>
                   <SelectItem value="medlineplus">MedlinePlus</SelectItem>
                   <SelectItem value="googlescholar">Google Scholar</SelectItem>
+                  <SelectItem value="google">Google Search</SelectItem> 
+                  <SelectItem value="university">University Repositories</SelectItem>
                   <SelectItem value="aocet">AO CET Ophthalmology</SelectItem>
                 </SelectContent>
               </Select>

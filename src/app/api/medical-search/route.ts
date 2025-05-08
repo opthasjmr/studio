@@ -142,6 +142,38 @@ async function fetchAOCET(query: string): Promise<SearchResultItem[]> {
     }
 }
 
+async function fetchGoogleSearch(query: string): Promise<SearchResultItem[]> {
+    try {
+        const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+        return [{
+            source: "Google",
+            title: `Google search for "${query}"`,
+            summary: `General web search results for "${query}" from Google.`,
+            url: searchUrl,
+        }];
+    } catch (error) {
+        console.error(`Error creating Google search link for "${query}":`, error);
+        return [];
+    }
+}
+
+async function fetchUniversitySearch(query: string): Promise<SearchResultItem[]> {
+    try {
+        // More specific search query for university research, targeting ophthalmology
+        const universityQuery = `${query} ophthalmology site:.edu OR site:.ac.uk OR site:.ac.jp OR site:.uni-heidelberg.de`; // Example TLDs
+        const searchUrl = `https://scholar.google.com/scholar?q=${encodeURIComponent(universityQuery)}`;
+        return [{
+            source: "University Repositories (via Google Scholar)",
+            title: `University & Academic Research for "${query}" in Ophthalmology`,
+            summary: `Search for ophthalmology research from university domains and academic sources on Google Scholar. This search attempts to filter by common academic domains.`,
+            url: searchUrl,
+        }];
+    } catch (error) {
+        console.error(`Error creating University Repositories search link for "${query}":`, error);
+        return [];
+    }
+}
+
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -191,6 +223,15 @@ export async function GET(request: NextRequest) {
     if (source === "all" || source === "googlescholar") {
         const googleScholarResults = await fetchGoogleScholar(query);
         results.push(...googleScholarResults);
+    }
+     if (source === "all" || source === "google") {
+        const googleResults = await fetchGoogleSearch(query);
+        results.push(...googleResults);
+    }
+
+    if (source === "all" || source === "university") {
+        const universityResults = await fetchUniversitySearch(query);
+        results.push(...universityResults);
     }
 
     if (source === "all" || source === "aocet") {
