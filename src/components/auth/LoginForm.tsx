@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,7 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, SkipForward } from "lucide-react";
 import { SiteLogo } from "@/components/SiteLogo";
 
 const formSchema = z.object({
@@ -60,6 +61,10 @@ export function LoginForm() {
       router.push("/dashboard");
     }
   }
+
+  const handleSkipLogin = () => {
+    router.push("/");
+  };
 
   return (
     <Card className="w-full max-w-md shadow-xl">
@@ -122,11 +127,17 @@ export function LoginForm() {
           </form>
         </Form>
       </CardContent>
-      <CardFooter className="flex flex-col items-center space-y-2">
-         <Link href="/forgot-password">
-            <Button variant="link" className="p-0 h-auto text-sm">Forgot password?</Button>
-          </Link>
-        <p className="text-sm text-muted-foreground">
+      <CardFooter className="flex flex-col items-center space-y-4"> {/* Increased space-y for new button */}
+         <div className="flex justify-between w-full items-center">
+            <Link href="/forgot-password">
+                <Button variant="link" className="p-0 h-auto text-sm">Forgot password?</Button>
+            </Link>
+            <Button variant="outline" size="sm" onClick={handleSkipLogin} className="text-sm">
+                <SkipForward className="mr-2 h-4 w-4" />
+                Skip Login
+            </Button>
+         </div>
+        <p className="text-sm text-muted-foreground pt-2"> {/* Added padding-top */}
           Don&apos;t have an account?{" "}
           <Link href="/signup" className="font-medium text-primary hover:underline">
             Sign up
