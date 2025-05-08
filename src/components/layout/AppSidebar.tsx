@@ -34,6 +34,7 @@ import {
   LogOut,
   ChevronDown,
   ChevronUp,
+  ScanEye, // Added ScanEye
 } from "lucide-react";
 import type React from 'react';
 import { useState } from 'react';
@@ -59,11 +60,12 @@ const navItems: NavItem[] = [
       { href: "/appointments/new", icon: CalendarDays, label: "Schedule New", roles: ["admin", "doctor", "receptionist"] },
     ]
   },
-  { href: "/emr", icon: FileText, label: "EMR / Records", roles: ["admin", "doctor"], }, // Placeholder
-  { href: "/billing", icon: DollarSign, label: "Billing", roles: ["admin", "receptionist"], }, // Placeholder
-  { href: "/reports", icon: BarChart2, label: "Reports", roles: ["admin", "doctor"], }, // Placeholder
-  { href: "/telemedicine", icon: Video, label: "Telemedicine", roles: ["admin", "doctor", "patient"], }, // Placeholder
-  { href: "/settings", icon: Settings, label: "Settings", roles: ["admin"], }, // Placeholder
+  { href: "/analyze-scan", icon: ScanEye, label: "Analyze Scan", roles: ["admin", "doctor"] }, // Added Analyze Scan
+  { href: "/emr", icon: FileText, label: "EMR", roles: ["admin", "doctor"], },
+  { href: "/billing", icon: DollarSign, label: "Billing", roles: ["admin", "receptionist"], },
+  { href: "/reports", icon: BarChart2, label: "Reports", roles: ["admin", "doctor"], },
+  { href: "/telemedicine", icon: Video, label: "Telemedicine", roles: ["admin", "doctor", "patient"], },
+  { href: "/settings", icon: Settings, label: "Settings", roles: ["admin"], },
 ];
 
 export function AppSidebar() {
@@ -75,7 +77,7 @@ export function AppSidebar() {
 
   const handleSignOut = async () => {
     await signOutUser();
-    if(setOpenMobile) setOpenMobile(false); // Close mobile sidebar on logout
+    if(setOpenMobile) setOpenMobile(false); 
     router.push("/login");
   };
 
@@ -83,7 +85,7 @@ export function AppSidebar() {
     setOpenSubmenus(prev => ({ ...prev, [label]: !prev[label] }));
   };
 
-  if (!user) return null; // Sidebar should only show for logged-in users
+  if (!user) return null; 
 
   const filteredNavItems = navItems.filter(item => role && item.roles.includes(role));
 
@@ -102,7 +104,7 @@ export function AppSidebar() {
                   if (item.children) {
                     toggleSubmenu(item.label);
                   } else {
-                     if(setOpenMobile) setOpenMobile(false); // Close mobile sidebar on nav
+                     if(setOpenMobile) setOpenMobile(false); 
                     router.push(item.href);
                   }
                 }}
@@ -122,11 +124,10 @@ export function AppSidebar() {
                         asChild 
                         isActive={pathname === subItem.href}
                         onClick={() => {
-                           if(setOpenMobile) setOpenMobile(false); // Close mobile sidebar on nav
+                           if(setOpenMobile) setOpenMobile(false); 
                         }}
                        >
                         <Link href={subItem.href}>
-                          {/* <subItem.icon className="h-4 w-4 mr-2" /> */}
                           {subItem.label}
                         </Link>
                       </SidebarMenuSubButton>
@@ -152,15 +153,12 @@ export function AppSidebar() {
   );
 }
 
-// Wrapper component for pages using the sidebar
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider defaultOpen={true}> {/* Control default state here */}
+    <SidebarProvider defaultOpen={true}> 
       <div className="flex min-h-screen">
         <AppSidebar />
         <main className="flex-1 flex flex-col">
-            {/* Top Nav placeholder (to be AppHeader) */}
-             {/* <AppHeader /> */}
             <div className="flex-1 overflow-y-auto">
                  {children}
             </div>

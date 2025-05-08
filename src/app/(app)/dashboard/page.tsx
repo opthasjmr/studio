@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { FilePlus2, Users, CalendarDays, BarChart3, User, AlertCircle, Activity, Briefcase, ServerIcon, BarChartBig, LineChart, PieChartIcon } from "lucide-react";
+import { FilePlus2, Users, CalendarDays, BarChart3, User, AlertCircle, Activity, Briefcase, ServerIcon, BarChartBig, LineChart, PieChartIcon, Filter } from "lucide-react";
 import { useEffect, useState } from "react";
 import { QuickStatsCard } from "@/components/dashboard/QuickStatsCard";
 import { UpcomingAppointmentsWidget } from "@/components/dashboard/UpcomingAppointmentsWidget";
@@ -13,6 +13,7 @@ import { RecentActivitiesWidget } from "@/components/dashboard/RecentActivitiesW
 import { AnalyticsPlaceholderWidget } from "@/components/dashboard/AnalyticsPlaceholderWidget";
 import { BillingSummaryWidget } from "@/components/dashboard/BillingSummaryWidget";
 import { SystemHealthWidget } from "@/components/dashboard/SystemHealthWidget";
+import { AppointmentCalendarWidget } from "@/components/dashboard/AppointmentCalendarWidget"; // Added
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Appointment, RecentActivity, PatientsByConditionData } from "@/lib/dashboard-data";
 import {
@@ -137,7 +138,6 @@ export default function DashboardPage() {
         </CardHeader>
       </Card>
 
-      {/* Quick Actions - Kept from original */}
       {availableActions.length > 0 && (
         <div>
             <h2 className="text-2xl font-semibold text-foreground mb-4">Quick Actions</h2>
@@ -162,11 +162,9 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Dashboard Widgets Section */}
       <div>
         <h2 className="text-2xl font-semibold text-foreground mb-6 mt-10">Overview</h2>
         
-        {/* Quick Stats */}
         {loadingData ? (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
                 {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-32" />)}
@@ -188,8 +186,13 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          {/* Left Column / Main Column for smaller screens */}
+        {/* Calendar View Widget - Added */}
+        {(role === 'admin' || role === 'doctor' || role === 'receptionist') && (
+          loadingData ? <Skeleton className="h-[450px] mb-8" /> : <AppointmentCalendarWidget />
+        )}
+
+
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 mt-8"> {/* Added mt-8 for spacing */}
           <div className="lg:col-span-2 space-y-8">
             {loadingData ? (
                 <Skeleton className="h-96" />
@@ -212,7 +215,6 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Right Column / Second Column for smaller screens */}
           <div className="lg:col-span-1 space-y-8">
             {loadingData ? (
                 <Skeleton className="h-80" />
@@ -237,8 +239,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-
-      {/* Example of role-specific content from original */}
       {role === "doctor" && !loadingData && (
         <Card className="mt-8">
           <CardHeader>
@@ -246,7 +246,6 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p>Review your upcoming schedule and patient alerts.</p>
-            {/* Additional doctor specific widgets could go here */}
           </CardContent>
         </Card>
       )}
