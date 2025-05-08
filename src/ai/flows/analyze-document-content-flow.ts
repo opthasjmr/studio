@@ -19,7 +19,8 @@ const AnalyzeDocumentContentInputSchema = z.object({
 });
 export type AnalyzeDocumentContentInput = z.infer<typeof AnalyzeDocumentContentInputSchema>;
 
-export const AnalyzeDocumentContentOutputSchema = z.object({
+// Removed export from AnalyzeDocumentContentOutputSchema
+const AnalyzeDocumentContentOutputSchema = z.object({
   topic: z.string().optional().describe('The main medical topic identified in the document.'),
   keyPointsSummary: z.array(z.string()).optional().describe('A concise list of 3-5 key bullet points summarizing the most critical aspects of the document relevant to a medical condition or topic.'),
   etiology: z.string().optional().describe('The causes and risk factors discussed in the document.'),
