@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { FilePlus2, Users, CalendarDays, BarChart3, User, AlertCircle, Activity, Briefcase, ServerIcon, BarChartBig, LineChart, PieChartIcon, Filter } from "lucide-react";
+import { FilePlus2, Users, CalendarDays, BarChart3, User, AlertCircle, Activity, Briefcase, ServerIcon, BarChartBig, LineChart, PieChartIcon, Filter, ShieldAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { QuickStatsCard } from "@/components/dashboard/QuickStatsCard";
 import { UpcomingAppointmentsWidget } from "@/components/dashboard/UpcomingAppointmentsWidget";
@@ -13,29 +13,32 @@ import { RecentActivitiesWidget } from "@/components/dashboard/RecentActivitiesW
 import { AnalyticsPlaceholderWidget } from "@/components/dashboard/AnalyticsPlaceholderWidget";
 import { BillingSummaryWidget } from "@/components/dashboard/BillingSummaryWidget";
 import { SystemHealthWidget } from "@/components/dashboard/SystemHealthWidget";
-import { AppointmentCalendarWidget } from "@/components/dashboard/AppointmentCalendarWidget"; // Added
+import { AppointmentCalendarWidget } from "@/components/dashboard/AppointmentCalendarWidget";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Appointment, RecentActivity, PatientsByConditionData } from "@/lib/dashboard-data";
+import type { Appointment, RecentActivity, PatientsByConditionData, Patient } from "@/lib/dashboard-data";
 import {
   getTotalPatientsCount,
   getTodaysAppointmentsCount,
   getPendingBillsCount,
-  getCriticalAlertsCount,
+  getCriticalAlertsCount, // This can be adapted for high-risk patients
   getUpcomingAppointments,
   getRecentActivities,
   getPatientsByCondition,
+  // getHighRiskPatients, // Placeholder function if we decide to implement
 } from "@/lib/dashboard-data";
 import type { ChartConfig } from "@/components/ui/chart";
+import { HighRiskPatientsWidget } from "@/components/dashboard/HighRiskPatientsWidget"; // New Widget
 
 
 interface DashboardData {
   totalPatients: number;
   todaysAppointments: number;
   pendingBills: number;
-  criticalAlerts: number;
+  criticalAlerts: number; // Can be used for high-risk patient count
   upcomingAppointments: Appointment[];
   recentActivities: RecentActivity[];
   patientsByCondition: PatientsByConditionData[];
+  highRiskPatients: Patient[]; // Added for new widget
 }
 
 export default function DashboardPage() {
@@ -48,11 +51,18 @@ export default function DashboardPage() {
       if (!user) return;
       setLoadingData(true);
       try {
+        // Simulate fetching high-risk patients for now
+        const highRiskPatientsData: Patient[] = role === 'doctor' || role === 'admin' ? [
+            // { id: "p001", name: "John Doe (High IOP)", dob: "1960-01-01", tags: ["Glaucoma Suspect"], createdAt: new Date() },
+            // { id: "p002", name: "Jane Smith (DR Stage II)", dob: "1975-05-15", tags: ["Diabetic Retinopathy"], createdAt: new Date() },
+        ] : [];
+
+
         const [
           totalPatients,
           todaysAppointments,
           pendingBills,
-          criticalAlerts,
+          criticalAlerts, // This could represent count of high-risk patients or other critical system alerts
           upcomingAppointments,
           recentActivities,
           patientsByCondition,
@@ -60,7 +70,7 @@ export default function DashboardPage() {
           getTotalPatientsCount(),
           getTodaysAppointmentsCount(),
           getPendingBillsCount(),
-          getCriticalAlertsCount(),
+          getCriticalAlertsCount(), // Using this for general critical alerts
           getUpcomingAppointments(5),
           getRecentActivities(5),
           getPatientsByCondition(),
@@ -73,16 +83,16 @@ export default function DashboardPage() {
           upcomingAppointments,
           recentActivities,
           patientsByCondition,
+          highRiskPatients: highRiskPatientsData, // Add fetched high-risk patients
         });
       } catch (error) {
         console.error("Failed to load dashboard data", error);
-        // Optionally set an error state here
       } finally {
         setLoadingData(false);
       }
     }
     fetchData();
-  }, [user]);
+  }, [user, role]);
 
 
   if (!user) {
@@ -96,7 +106,7 @@ export default function DashboardPage() {
   const getRoleSpecificGreeting = () => {
     switch (role) {
       case "doctor":
-        return "Manage your patients, appointments, and analyze diagnostic scans.";
+        return "Manage your patients, appointments, analyze diagnostic scans, and monitor high-risk cases.";
       case "patient":
         return "View your appointments, medical records, and manage your profile.";
       case "receptionist":
@@ -180,19 +190,23 @@ export default function DashboardPage() {
             {(role === 'admin' || role === 'doctor') && (
               <QuickStatsCard title="Pending Bills" value={dashboardData.pendingBills} icon={Briefcase} description="Feature in development" />
             )}
-            {(role === 'admin' || role === 'doctor') && (
-               <QuickStatsCard title="Critical Alerts" value={dashboardData.criticalAlerts} icon={AlertCircle} description="Feature in development" />
+            {(role === 'admin' || role === 'doctor') && ( // For doctors, this could show count of high-risk patients
+               <QuickStatsCard 
+                  title={role === 'doctor' ? "High-Risk Patients" : "Critical System Alerts"} 
+                  value={role === 'doctor' ? (dashboardData.highRiskPatients?.length || 0) : dashboardData.criticalAlerts} 
+                  icon={role === 'doctor' ? ShieldAlert : AlertCircle} 
+                  description={role === 'doctor' ? "Needs follow-up" : "System status"}
+                />
             )}
           </div>
         )}
 
-        {/* Calendar View Widget - Added */}
         {(role === 'admin' || role === 'doctor' || role === 'receptionist') && (
           loadingData ? <Skeleton className="h-[450px] mb-8" /> : <AppointmentCalendarWidget />
         )}
 
 
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 mt-8"> {/* Added mt-8 for spacing */}
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 mt-8">
           <div className="lg:col-span-2 space-y-8">
             {loadingData ? (
                 <Skeleton className="h-96" />
@@ -213,6 +227,13 @@ export default function DashboardPage() {
                 dataKey="count"
               />
             )}
+
+             {/* High-Risk Patients Widget for Doctors and Admins */}
+            {(role === 'admin' || role === 'doctor') && (
+              loadingData ? <Skeleton className="h-80 mt-8" /> : 
+              dashboardData?.highRiskPatients && <HighRiskPatientsWidget patients={dashboardData.highRiskPatients} />
+            )}
+
           </div>
 
           <div className="lg:col-span-1 space-y-8">
@@ -231,7 +252,7 @@ export default function DashboardPage() {
                  loadingData ? <Skeleton className="h-64" /> :
                 <SystemHealthWidget 
                     lastBackup="Today, 02:00 AM" 
-                    activeIntegrations={[{name: 'Twilio SMS', status: 'active'}, {name: 'Payment Gateway', status: 'error'}]}
+                    activeIntegrations={[{name: 'Twilio SMS', status: 'active'}, {name: 'Payment Gateway', status: 'error'}, { name: 'OCT Device Sync', status: 'inactive'}]}
                     errorLogsCount={2}
                 />
             )}
@@ -245,7 +266,10 @@ export default function DashboardPage() {
             <CardTitle>Doctor's Corner</CardTitle>
           </CardHeader>
           <CardContent>
-            <p>Review your upcoming schedule and patient alerts.</p>
+            <p>Review your upcoming schedule, patient alerts, and AI-assisted diagnostic summaries.</p>
+            <Button asChild className="mt-4">
+                <Link href="/analyze-scan">Access AI Diagnostic Tools</Link>
+            </Button>
           </CardContent>
         </Card>
       )}

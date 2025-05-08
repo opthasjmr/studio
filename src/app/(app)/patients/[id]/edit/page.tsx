@@ -2,7 +2,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,15 +20,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useParams } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Loader2, UserCog, CalendarIcon, ArrowLeft, Tag } from "lucide-react";
+import { Loader2, UserCog, CalendarIcon, ArrowLeft, Tag, Pill, History, PlusCircle, Trash2, Eye } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isValid } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
+
+const treatmentHistorySchema = z.object({
+  date: z.date({ required_error: "Treatment date is required."}),
+  treatment: z.string().min(1, "Treatment description is required."),
+  notes: z.string().optional(),
+});
 
 const patientFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -36,12 +43,15 @@ const patientFormSchema = z.object({
   phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }).optional().or(z.literal('')),
   email: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
   address: z.string().optional(),
+  tags: z.string().optional(),
   emergencyContactName: z.string().optional(),
   emergencyContactPhone: z.string().optional(),
   insuranceProvider: z.string().optional(),
   insurancePolicyNumber: z.string().optional(),
-  medicalHistory: z.string().optional(),
-  tags: z.string().optional(),
+  medicalHistory: z.string().optional(), // General medical history
+  ocularHistory: z.string().optional(), // Specific eye history
+  currentMedications: z.string().optional(), // Comma-separated string for simplicity, can be enhanced
+  treatmentHistory: z.array(treatmentHistorySchema).optional(),
 });
 
 export default function EditPatientPage() {
@@ -61,14 +71,23 @@ export default function EditPatientPage() {
       phone: "",
       email: "",
       address: "",
+      tags: "",
       emergencyContactName: "",
       emergencyContactPhone: "",
       insuranceProvider: "",
       insurancePolicyNumber: "",
       medicalHistory: "",
-      tags: "",
+      ocularHistory: "",
+      currentMedications: "",
+      treatmentHistory: [],
     },
   });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "treatmentHistory",
+  });
+
 
   useEffect(() => {
     if (!patientId || !user) return;
@@ -87,15 +106,21 @@ export default function EditPatientPage() {
           const data = patientDocSnap.data();
           form.reset({
             ...data,
-            dob: data.dob ? parseISO(data.dob) : undefined,
+            dob: data.dob && isValid(parseISO(data.dob)) ? parseISO(data.dob) : undefined,
             tags: data.tags && Array.isArray(data.tags) ? data.tags.join(', ') : '',
+            currentMedications: data.currentMedications && Array.isArray(data.currentMedications) ? data.currentMedications.join(', ') : '',
+            treatmentHistory: data.treatmentHistory?.map((item: any) => ({
+                ...item,
+                date: item.date && isValid(parseISO(item.date)) ? parseISO(item.date) : new Date(),
+            })) || [],
           });
         } else {
           toast({ title: "Error", description: "Patient not found.", variant: "destructive" });
           router.push("/patients");
         }
       } catch (error) {
-        toast({ title: "Error", description: "Failed to load patient data.", variant: "destructive" });
+        console.error("Failed to load patient data:", error);
+        toast({ title: "Error", description: "Failed to load patient data. Check console for details.", variant: "destructive" });
       } finally {
         setIsFetching(false);
       }
@@ -114,10 +139,21 @@ export default function EditPatientPage() {
       const tagsArray = values.tags
         ? values.tags.split(',').map(tag => tag.trim()).filter(tag => tag !== '')
         : [];
+      
+      const medicationsArray = values.currentMedications
+        ? values.currentMedications.split(',').map(med => med.trim()).filter(med => med !== '')
+        : [];
+
+      const formattedTreatmentHistory = values.treatmentHistory?.map(item => ({
+        ...item,
+        date: item.date.toISOString().split('T')[0],
+      }));
 
       await updateDoc(patientDocRef, {
         ...values,
-        tags: tagsArray, // Save tags as an array
+        tags: tagsArray,
+        currentMedications: medicationsArray,
+        treatmentHistory: formattedTreatmentHistory,
         dob: values.dob.toISOString().split('T')[0], 
         updatedAt: serverTimestamp(),
       });
@@ -127,6 +163,7 @@ export default function EditPatientPage() {
       });
       router.push(`/patients/${patientId}`);
     } catch (error: any) {
+      console.error("Error updating patient:", error)
       toast({
         title: "Error Updating Patient",
         description: error.message || "An unexpected error occurred.",
@@ -147,7 +184,7 @@ export default function EditPatientPage() {
             <Skeleton className="h-4 w-3/4" />
           </CardHeader>
           <CardContent className="space-y-8">
-            {[...Array(6)].map((_, i) => ( // Increased array size for new field
+            {[...Array(10)].map((_, i) => (
               <div key={i} className="space-y-2">
                 <Skeleton className="h-4 w-1/4" />
                 <Skeleton className="h-10 w-full" />
@@ -165,7 +202,7 @@ export default function EditPatientPage() {
 
 
   return (
-    <div className="container mx-auto py-10 px-4 max-w-3xl"> {/* Ensure consistent padding */}
+    <div className="container mx-auto py-10 px-4 max-w-3xl">
       <Button onClick={() => router.back()} variant="outline" className="mb-6">
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Patient Details
       </Button>
@@ -184,6 +221,7 @@ export default function EditPatientPage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <h3 className="text-xl font-semibold text-primary pt-4 border-t">Basic Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
@@ -280,16 +318,15 @@ export default function EditPatientPage() {
                   </FormItem>
                 )}
               />
-
-              <h3 className="text-lg font-semibold text-primary pt-4 border-t">Patient Tags</h3>
-               <FormField
+              
+              <FormField
                 control={form.control}
                 name="tags"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="flex items-center">
                       <Tag className="mr-2 h-4 w-4" />
-                      Tags
+                      Patient Tags
                     </FormLabel>
                     <FormControl>
                       <Input placeholder="e.g., Glaucoma, High Risk, Follow-up Needed" {...field} />
@@ -301,8 +338,114 @@ export default function EditPatientPage() {
                   </FormItem>
                 )}
               />
+              <Separator />
+              <h3 className="text-xl font-semibold text-primary pt-2">Medical Information</h3>
+               <FormField
+                control={form.control}
+                name="ocularHistory"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center"><Eye className="mr-2 h-4 w-4" />Ocular History</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Previous eye surgeries, chronic conditions (dry eye, uveitis), trauma, family history of eye diseases..." {...field} />
+                    </FormControl>
+                     <FormDescription>Detail specific eye-related medical history.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="medicalHistory"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>General Medical History</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Known allergies, chronic systemic conditions (diabetes, hypertension), past major surgeries, etc." {...field} />
+                    </FormControl>
+                    <FormDescription>Summarize relevant general medical background.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="currentMedications"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center"><Pill className="mr-2 h-4 w-4" />Current Medications</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="e.g., Latanoprost 0.005% (1 drop OD nightly), Metformin 500mg (oral, BID), Aspirin 81mg (daily)" {...field} />
+                    </FormControl>
+                    <FormDescription>List all current medications (eye-related and systemic), separated by commas.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div>
+                <FormLabel className="flex items-center text-lg mb-2"><History className="mr-2 h-5 w-5" />Treatment History</FormLabel>
+                {fields.map((item, index) => (
+                  <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_2fr_2fr_auto] gap-3 items-end p-3 mb-3 border rounded-md bg-secondary/30">
+                    <FormField
+                      control={form.control}
+                      name={`treatmentHistory.${index}.date`}
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Date</FormLabel>
+                           <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                  {field.value ? format(field.value, "PPP") : <span>Pick date</span>}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`treatmentHistory.${index}.treatment`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Treatment/Procedure</FormLabel>
+                          <FormControl><Input placeholder="e.g., SLT, Anti-VEGF injection" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`treatmentHistory.${index}.notes`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Notes (Optional)</FormLabel>
+                          <FormControl><Input placeholder="e.g., OD, IOP reduced to 15" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} className="mb-1">
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Remove treatment</span>
+                    </Button>
+                  </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={() => append({ date: new Date(), treatment: "", notes: "" })}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Add Treatment Record
+                </Button>
+              </div>
+              <Separator/>
               
-              <h3 className="text-lg font-semibold text-primary pt-4 border-t">Emergency Contact (Optional)</h3>
+              <h3 className="text-xl font-semibold text-primary pt-2">Administrative Information</h3>
+              <h4 className="text-lg font-semibold text-primary/80">Emergency Contact (Optional)</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <FormField
                   control={form.control}
@@ -332,7 +475,7 @@ export default function EditPatientPage() {
                 />
               </div>
 
-              <h3 className="text-lg font-semibold text-primary pt-4 border-t">Insurance Details (Optional)</h3>
+              <h4 className="text-lg font-semibold text-primary/80 pt-4">Insurance Details (Optional)</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <FormField
                   control={form.control}
@@ -361,22 +504,8 @@ export default function EditPatientPage() {
                   )}
                 />
               </div>
-
-              <FormField
-                control={form.control}
-                name="medicalHistory"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Brief Medical History (Optional)</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Known allergies, chronic conditions, etc." {...field} />
-                    </FormControl>
-                    <FormDescription>Summarize relevant medical background.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="flex justify-end space-x-3 pt-6">
+              
+              <div className="flex justify-end space-x-3 pt-6 border-t mt-8">
                 <Button type="button" variant="outline" onClick={() => router.back()}>
                   Cancel
                 </Button>

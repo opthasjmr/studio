@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { analyzeEyeImage, type AnalyzeEyeImageOutput } from "@/ai/flows/analyze-eye-image";
+import { analyzeEyeImage, type AnalyzeEyeImageOutput, type AnalyzeEyeImageInput } from "@/ai/flows/analyze-eye-image";
 import Image from "next/image";
-import { UploadCloud, FileText, Brain, Lightbulb, Loader2, AlertCircle, CheckCircle } from "lucide-react";
+import { UploadCloud, FileText, Brain, Lightbulb, Loader2, AlertCircle, CheckCircle, Activity, ListChecks, ShieldAlert, Eye } from "lucide-react";
+import { Badge } from '@/components/ui/badge';
 
 export function AnalyzeScanForm() {
   const [file, setFile] = useState<File | null>(null);
@@ -17,7 +18,7 @@ export function AnalyzeScanForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalyzeEyeImageOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0); // For potential future upload progress
+  const [progress, setProgress] = useState(0);
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -36,7 +37,7 @@ export function AnalyzeScanForm() {
       }
       setError(null);
       setFile(selectedFile);
-      setAnalysisResult(null); // Clear previous results
+      setAnalysisResult(null); 
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewUrl(reader.result as string);
@@ -53,19 +54,17 @@ export function AnalyzeScanForm() {
     setError(null);
     setIsLoading(true);
     setAnalysisResult(null);
-    setProgress(0); // Reset progress
+    setProgress(0);
 
-    // Simulate progress for demonstration
     let currentProgress = 0;
     const progressInterval = setInterval(() => {
       currentProgress += 10;
-      if (currentProgress <= 70) { // Stop at 70% before AI call
+      if (currentProgress <= 70) {
         setProgress(currentProgress);
       } else {
         clearInterval(progressInterval);
       }
     }, 100);
-
 
     try {
       const reader = new FileReader();
@@ -76,14 +75,14 @@ export function AnalyzeScanForm() {
           throw new Error("Failed to read file data.");
         }
         
-        const result = await analyzeEyeImage({ eyeScanDataUri });
-        clearInterval(progressInterval); // Clear simulation interval
-        setProgress(100); // Set progress to 100%
+        const input: AnalyzeEyeImageInput = { eyeScanDataUri };
+        const result = await analyzeEyeImage(input);
+        clearInterval(progressInterval);
+        setProgress(100);
         setAnalysisResult(result);
-
       };
-      reader.onerror = (error) => {
-        console.error("File reading error:", error);
+      reader.onerror = (err) => {
+        console.error("File reading error:", err);
         setError("Failed to read file. Please try again.");
         setIsLoading(false);
         setProgress(0);
@@ -95,12 +94,12 @@ export function AnalyzeScanForm() {
       setProgress(0);
       clearInterval(progressInterval);
     } finally {
-      setIsLoading(false); // Ensure loading is false even if reader fails early
+       // setIsLoading(false) will be handled by reader.onload or reader.onerror to ensure it's called after async op
     }
   };
 
   return (
-    <div className="container mx-auto py-12 px-4 md:px-6 max-w-3xl">
+    <div className="container mx-auto py-12 px-4 md:px-6 max-w-4xl"> {/* Increased max-width for better layout */}
       <Card className="shadow-xl">
         <CardHeader>
           <div className="flex items-center space-x-3 mb-2">
@@ -108,7 +107,7 @@ export function AnalyzeScanForm() {
             <div>
               <CardTitle className="text-3xl font-bold">AI Eye Scan Analysis</CardTitle>
               <CardDescription className="text-md">
-                Upload an OCT or fundus image to get AI-powered insights and potential diagnoses.
+                Upload an OCT or fundus image. Our AI will help detect signs of conditions like Diabetic Retinopathy, Glaucoma, AMD, and Cataracts.
               </CardDescription>
             </div>
           </div>
@@ -125,7 +124,7 @@ export function AnalyzeScanForm() {
             <Label htmlFor="eye-scan" className="text-lg font-semibold">Upload Eye Scan Image</Label>
             <div className="flex items-center space-x-2">
               <Input id="eye-scan" type="file" accept="image/*" onChange={handleFileChange} className="flex-grow file:text-primary file:font-semibold hover:file:bg-primary/10"/>
-              <Button onClick={handleSubmit} disabled={!file || isLoading} className="min-w-[120px]">
+              <Button onClick={() => { handleSubmit().finally(() => setIsLoading(false)); }} disabled={!file || isLoading} className="min-w-[120px]">
                 {isLoading ? (
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                 ) : (
@@ -144,9 +143,11 @@ export function AnalyzeScanForm() {
                 src={previewUrl}
                 alt="Eye scan preview"
                 data-ai-hint="eye scan"
-                width={500}
-                height={300}
-                className="rounded-md object-contain max-h-[300px] w-full shadow-md"
+                width={0}
+                height={0}
+                sizes="100vw"
+                style={{ width: '100%', height: 'auto', maxHeight: '400px', objectFit: 'contain' }}
+                className="rounded-md shadow-md"
               />
             </div>
           )}
@@ -165,43 +166,102 @@ export function AnalyzeScanForm() {
                  <CheckCircle className="h-5 w-5 text-green-600" />
                  <AlertTitle className="text-green-700 font-semibold">Analysis Complete</AlertTitle>
                  <AlertDescription className="text-green-600">
-                   The AI analysis of the eye scan image has finished. See results below.
+                   The AI analysis has finished. Review the detailed findings below.
                  </AlertDescription>
               </Alert>
 
               <Card className="bg-background shadow-md">
                 <CardHeader className="flex flex-row items-center space-x-3 bg-secondary/50 rounded-t-lg py-3 px-4">
-                  <FileText className="h-6 w-6 text-primary" />
-                  <CardTitle className="text-xl text-primary">Analysis Result</CardTitle>
+                  <Eye className="h-6 w-6 text-primary" />
+                  <CardTitle className="text-xl text-primary">Overall Assessment</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-4 px-4 pb-4">
-                  <p className="text-foreground whitespace-pre-wrap leading-relaxed">{analysisResult.analysisResult}</p>
+                  <p className="text-foreground whitespace-pre-wrap leading-relaxed">{analysisResult.overallAssessment}</p>
                 </CardContent>
               </Card>
+              
+              {analysisResult.detectedAnomalies && analysisResult.detectedAnomalies.length > 0 && (
+                <Card className="bg-background shadow-md">
+                  <CardHeader className="flex flex-row items-center space-x-3 bg-secondary/50 rounded-t-lg py-3 px-4">
+                    <Activity className="h-6 w-6 text-primary" />
+                    <CardTitle className="text-xl text-primary">Detected Anomalies / Observations</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-4 px-4 pb-4 space-y-3">
+                    {analysisResult.detectedAnomalies.map((anomaly, index) => (
+                      <div key={index} className="p-3 border rounded-md bg-secondary/20">
+                        <p className="font-semibold text-foreground">{anomaly.finding}</p>
+                        {anomaly.location && <p className="text-sm text-muted-foreground">Location: {anomaly.location}</p>}
+                        {anomaly.severity && <p className="text-sm text-muted-foreground">Severity: <Badge variant={anomaly.severity === "normal" ? "default" : anomaly.severity === "mild" ? "secondary" : "destructive" }>{anomaly.severity}</Badge></p>}
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
 
-              <Card className="bg-background shadow-md">
-                <CardHeader className="flex flex-row items-center space-x-3 bg-secondary/50 rounded-t-lg py-3 px-4">
-                  <Lightbulb className="h-6 w-6 text-primary" />
-                  <CardTitle className="text-xl text-primary">Suggested Diagnoses</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-4 px-4 pb-4">
-                  {analysisResult.suggestedDiagnoses.length > 0 ? (
+              {analysisResult.potentialConditions && analysisResult.potentialConditions.length > 0 && (
+                <Card className="bg-background shadow-md">
+                  <CardHeader className="flex flex-row items-center space-x-3 bg-secondary/50 rounded-t-lg py-3 px-4">
+                    <Lightbulb className="h-6 w-6 text-primary" />
+                    <CardTitle className="text-xl text-primary">Potential Conditions</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-4 px-4 pb-4 space-y-4">
+                    {analysisResult.potentialConditions.map((condition, index) => (
+                      <div key={index} className="p-3 border rounded-md bg-secondary/20">
+                        <div className="flex justify-between items-center mb-1">
+                           <p className="font-semibold text-foreground">{condition.conditionName}</p>
+                           <Badge variant="outline">Confidence: {(condition.confidenceScore * 100).toFixed(0)}%</Badge>
+                        </div>
+                        {condition.supportingSigns && condition.supportingSigns.length > 0 && (
+                          <>
+                            <p className="text-xs text-muted-foreground mt-1 mb-0.5">Supporting Signs:</p>
+                            <ul className="list-disc list-inside text-sm text-foreground space-y-0.5">
+                              {condition.supportingSigns.map((sign, signIdx) => <li key={signIdx}>{sign}</li>)}
+                            </ul>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+              
+              {analysisResult.riskFactorsHighlighted && analysisResult.riskFactorsHighlighted.length > 0 && (
+                <Card className="bg-background shadow-md">
+                  <CardHeader className="flex flex-row items-center space-x-3 bg-secondary/50 rounded-t-lg py-3 px-4">
+                    <ShieldAlert className="h-6 w-6 text-primary" />
+                    <CardTitle className="text-xl text-primary">Highlighted Risk Factors</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-4 px-4 pb-4">
                     <ul className="list-disc list-inside space-y-1 text-foreground">
-                      {analysisResult.suggestedDiagnoses.map((diag, index) => (
-                        <li key={index} className="leading-relaxed">{diag}</li>
+                      {analysisResult.riskFactorsHighlighted.map((factor, index) => (
+                        <li key={index} className="leading-relaxed">{factor}</li>
                       ))}
                     </ul>
-                  ) : (
-                    <p className="text-muted-foreground">No specific diagnoses suggested based on this scan.</p>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
+
+              {analysisResult.recommendedNextSteps && analysisResult.recommendedNextSteps.length > 0 && (
+                <Card className="bg-background shadow-md">
+                  <CardHeader className="flex flex-row items-center space-x-3 bg-secondary/50 rounded-t-lg py-3 px-4">
+                    <ListChecks className="h-6 w-6 text-primary" />
+                    <CardTitle className="text-xl text-primary">Recommended Next Steps</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-4 px-4 pb-4">
+                     <ul className="list-disc list-inside space-y-1 text-foreground">
+                      {analysisResult.recommendedNextSteps.map((step, index) => (
+                        <li key={index} className="leading-relaxed">{step}</li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
               
               <Alert className="mt-4">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Disclaimer</AlertTitle>
                 <AlertDescription>
-                  This AI analysis is for informational purposes only and not a substitute for professional medical advice. Always consult with a qualified ophthalmologist for diagnosis and treatment.
+                  This AI analysis is a decision support tool and not a substitute for professional medical advice. Always consult with a qualified ophthalmologist for diagnosis and treatment.
                 </AlertDescription>
               </Alert>
             </div>
@@ -209,7 +269,7 @@ export function AnalyzeScanForm() {
         </CardContent>
         <CardFooter className="text-center">
             <p className="text-xs text-muted-foreground mx-auto">
-              Your data is processed securely. Results are intended to assist medical professionals.
+              Patient data is processed securely. Results are intended to assist medical professionals in their decision-making process.
             </p>
         </CardFooter>
       </Card>
