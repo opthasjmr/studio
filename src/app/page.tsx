@@ -1,4 +1,5 @@
 
+
 "use client"; // Add this if using hooks like useAuth directly or for interactions
 
 import { Button } from "@/components/ui/button";
@@ -6,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AppHeader } from "@/components/layout/AppHeader"; // Keep for logged-out view
 import Link from "next/link";
 import Image from "next/image";
-import { CheckCircle, Eye, Users, Activity, ShieldCheck } from "lucide-react";
+import { CheckCircle, Eye, Users, Activity, ShieldCheck, Microscope, BookOpen, Brain } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext"; // Import useAuth to check login state
+import { MedicalKnowledgeSearch } from "@/components/home/MedicalKnowledgeSearch"; // Import the new component
 
 export default function HomePage() {
   const { user } = useAuth(); // Check if user is logged in
@@ -37,7 +39,8 @@ export default function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      {!user && <AppHeader />} {/* Conditionally render AppHeader only if user is not logged in */}
+      {/* Conditionally render AppHeader only if user is not logged in, or AppHeader handles its visibility internally */}
+      <AppHeader />
       <main className="flex-1">
         {/* Hero Section */}
         <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 bg-secondary">
@@ -153,8 +156,29 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* Medical Knowledge Search Section */}
+        <section id="medical-search" className="w-full py-12 md:py-24 lg:py-32 border-t">
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
+              <div className="inline-block rounded-lg bg-muted px-3 py-1 text-sm text-primary">
+                <Brain className="inline-block h-5 w-5 mr-1" />
+                Knowledge Hub
+              </div>
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">
+                Explore Ophthalmic Knowledge
+              </h2>
+              <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                Access a vast repository of eye health information, research articles, and clinical data from authoritative sources. 
+                Powered by AI for summarized insights.
+              </p>
+            </div>
+            <MedicalKnowledgeSearch />
+          </div>
+        </section>
+
+
         {/* Call to Action Section */}
-        <section className="w-full py-12 md:py-24 lg:py-32 border-t">
+        <section className="w-full py-12 md:py-24 lg:py-32 border-t bg-secondary">
           <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6">
             <div className="space-y-3">
               <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">
@@ -194,3 +218,4 @@ export default function HomePage() {
     </div>
   );
 }
+
