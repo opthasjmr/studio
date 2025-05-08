@@ -1,8 +1,7 @@
-
 'use server';
 /**
  * @fileOverview An AI agent that generates a comprehensive summary of a medical topic,
- * including key bullet points and detailed sections.
+ * including key bullet points and detailed sections like Etiology, Symptoms, Diagnosis, Treatment, and Prognosis.
  *
  * - generateMedicalTopicSummary - A function that handles the medical topic summarization process.
  * - GenerateMedicalTopicSummaryInput - The input type for the generateMedicalTopicSummary function.
@@ -43,12 +42,12 @@ For the medical topic: {{{topic}}}, provide a comprehensive yet structured summa
 First, provide a 'keyPointsSummary' which is a concise list of 3-5 key bullet points summarizing the most critical aspects of the topic.
 
 Then, proceed with the detailed sections:
-1.  **Etiology**: Detail the primary causes and significant risk factors.
-2.  **Symptoms**: Describe the common early signs and how the condition typically progresses.
-3.  **Diagnosis**: Explain the common diagnostic methods, tests, and tools used.
-4.  **Treatment**: Outline the main medical, surgical, and lifestyle treatment options.
-5.  **Prognosis**: Discuss the expected outcomes and long-term outlook.
-6.  **Overall Summary**: Provide a brief, overarching summary of the condition (this should be different and more narrative than the key points).
+1.  **Etiology**: Detail the primary causes and significant risk factors associated with {{{topic}}}.
+2.  **Symptoms**: Describe the common early signs and how {{{topic}}} typically progresses. Include characteristic symptoms.
+3.  **Diagnosis**: Explain the common diagnostic methods, tests, and tools used to confirm {{{topic}}}. Mention key diagnostic criteria if applicable.
+4.  **Treatment**: Outline the main medical, surgical, and lifestyle treatment options available for {{{topic}}}. Include current best practices.
+5.  **Prognosis**: Discuss the expected outcomes and long-term outlook for individuals with {{{topic}}}. Consider factors influencing prognosis.
+6.  **Overall Summary**: Provide a brief, overarching summary of {{{topic}}} (this should be different and more narrative than the key points).
 
 Ensure the information is accurate, clear, and suitable for a medical professional or a well-informed patient. Focus on key information for each section.
 The topic is: {{{topic}}}
@@ -70,4 +69,3 @@ const generateMedicalTopicSummaryFlow = ai.defineFlow(
     return { ...output, topic: input.topic };
   }
 );
-

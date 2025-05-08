@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -20,6 +19,7 @@ import type { GenerateMedicalTopicSummaryOutput as AIOutputType } from "@/ai/flo
 // Make keyPointsSummary optional as it might not always be present if the flow changes or fails partially
 interface GenerateMedicalTopicSummaryOutput extends AIOutputType {
   keyPointsSummary?: string[];
+  // Etiology, Symptoms, Diagnosis, Treatment, Prognosis are already part of AIOutputType
 }
 
 
@@ -97,16 +97,28 @@ export function MedicalKnowledgeSearch() {
   };
 
   const renderMarkdownList = (text: string) => {
+    if (!text) return null;
     const lines = text.split('\n');
-    return lines.map((line, index) => {
-      if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
-        return <li key={index} className="ml-4 list-disc">{line.trim().substring(2)}</li>;
-      }
-      // Allow simple bolding with **text**
-      const boldedLine = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-      return <p key={index} dangerouslySetInnerHTML={{ __html: boldedLine }}></p>;
-    });
+    return (
+      <ul className="list-disc space-y-1 pl-5">
+        {lines.map((line, index) => {
+          const cleanedLine = line.trim().replace(/^(- |\* )/, '');
+          // Allow simple bolding with **text**
+          const boldedLine = cleanedLine.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+          return <li key={index} dangerouslySetInnerHTML={{ __html: boldedLine }}></li>;
+        })}
+      </ul>
+    );
   };
+  
+  const renderFormattedText = (text: string | undefined) => {
+    if (!text) return <p className="text-sm text-muted-foreground">Not available.</p>;
+    // Basic paragraph splitting and bolding
+    return text.split('\n\n').map((paragraph, pIdx) => (
+      <p key={pIdx} className="text-sm text-muted-foreground mb-2 last:mb-0" dangerouslySetInnerHTML={{ __html: paragraph.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+    ));
+  };
+
 
   return (
     <div className="w-full max-w-3xl mx-auto">
@@ -198,30 +210,30 @@ export function MedicalKnowledgeSearch() {
                     </Button>
 
                     {showDetailedSummary && (
-                      <div className="space-y-3 animate-accordion-down">
+                      <div className="space-y-4 animate-accordion-down">
                         <div>
                           <h4 className="font-semibold text-md text-foreground">Overall Summary:</h4>
-                          <p className="text-sm text-muted-foreground">{aiComprehensiveSummary.overallSummary}</p>
+                          {renderFormattedText(aiComprehensiveSummary.overallSummary)}
                         </div>
                         <div>
                           <h4 className="font-semibold text-md text-foreground">Etiology (Causes & Risk Factors):</h4>
-                          <div className="text-sm text-muted-foreground prose prose-sm max-w-none">{renderMarkdownList(aiComprehensiveSummary.etiology)}</div>
+                          {renderFormattedText(aiComprehensiveSummary.etiology)}
                         </div>
                         <div>
                           <h4 className="font-semibold text-md text-foreground">Symptoms:</h4>
-                          <div className="text-sm text-muted-foreground prose prose-sm max-w-none">{renderMarkdownList(aiComprehensiveSummary.symptoms)}</div>
+                           {renderFormattedText(aiComprehensiveSummary.symptoms)}
                         </div>
                         <div>
                           <h4 className="font-semibold text-md text-foreground">Diagnosis:</h4>
-                          <div className="text-sm text-muted-foreground prose prose-sm max-w-none">{renderMarkdownList(aiComprehensiveSummary.diagnosis)}</div>
+                           {renderFormattedText(aiComprehensiveSummary.diagnosis)}
                         </div>
                         <div>
                           <h4 className="font-semibold text-md text-foreground">Treatment:</h4>
-                          <div className="text-sm text-muted-foreground prose prose-sm max-w-none">{renderMarkdownList(aiComprehensiveSummary.treatment)}</div>
+                           {renderFormattedText(aiComprehensiveSummary.treatment)}
                         </div>
                         <div>
                           <h4 className="font-semibold text-md text-foreground">Prognosis:</h4>
-                          <div className="text-sm text-muted-foreground prose prose-sm max-w-none">{renderMarkdownList(aiComprehensiveSummary.prognosis)}</div>
+                           {renderFormattedText(aiComprehensiveSummary.prognosis)}
                         </div>
                       </div>
                     )}
@@ -312,4 +324,3 @@ export function MedicalKnowledgeSearch() {
     </div>
   );
 }
-
