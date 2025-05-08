@@ -3,21 +3,28 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { doc, getDoc, DocumentData } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { doc, getDoc, DocumentData, Timestamp } from "firebase/firestore"; // Ensure Timestamp is imported
+import { db } from "@/lib/firebase"; // Import potentially null service
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Edit3, Loader2, UserCircle, Calendar, Phone, Mail, MapPin, ShieldAlert, Briefcase, FileText, Tag, History, Pill, Eye } from "lucide-react";
+import { ArrowLeft, Edit3, Loader2, UserCircle, Calendar, Phone, Mail, MapPin, ShieldAlert, Briefcase, FileText, Tag, History, Pill, Eye, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"; // Added Alert components
+
+interface TreatmentHistoryItem {
+  date: string; // Should be string 'YYYY-MM-DD' based on saving logic
+  treatment: string;
+  notes?: string;
+}
 
 interface PatientDetails extends DocumentData {
   id: string;
   name: string;
-  dob: string;
+  dob: string; // Expecting 'YYYY-MM-DD' string
   phone?: string;
   email?: string;
   address?: string;
@@ -28,57 +35,103 @@ interface PatientDetails extends DocumentData {
   medicalHistory?: string; // General medical history
   ocularHistory?: string; // Specific eye history
   currentMedications?: string[]; // List of medications
-  treatmentHistory?: { date: string; treatment: string; notes?: string }[]; // Structured treatment history
+  treatmentHistory?: TreatmentHistoryItem[]; // Structured treatment history
   tags?: string[];
+  userId?: string; // Added userId for potential access checks
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }
 
 export default function PatientDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { user, role } = useAuth(); 
+  const { user, role } = useAuth();
   const [patient, setPatient] = useState<PatientDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null); // State for fetch errors
   const patientId = params.id as string;
+  const isDbAvailable = !!db; // Check if db is initialized
 
   useEffect(() => {
     if (patientId && user) {
       const fetchPatientDetails = async () => {
         setLoading(true);
+        setFetchError(null);
+
+        if (!db) {
+            setFetchError("Database service is unavailable. Please check configuration.");
+            setLoading(false);
+            return;
+        }
+
         try {
           const patientDocRef = doc(db, "patients", patientId);
           const patientDocSnap = await getDoc(patientDocRef);
 
           if (patientDocSnap.exists()) {
-            // Mock additional EMR details for now if not present in DB
             const data = patientDocSnap.data();
-            const mockPatientData: PatientDetails = {
+
+             // Basic access control: Check if the logged-in user should see this patient
+             // Admins, Doctors, Receptionists can see all (based on current logic)
+             // Patients can only see their own record if 'userId' field matches
+             if (role === 'patient' && data.userId !== user.uid) {
+                 setFetchError("You do not have permission to view this patient's record.");
+                 setPatient(null);
+                 setLoading(false);
+                 // Optionally redirect: router.push('/dashboard');
+                 return;
+             }
+
+            // Map Firestore data to PatientDetails interface, providing defaults
+            const loadedPatient: PatientDetails = {
               id: patientDocSnap.id,
-              ...data,
-              ocularHistory: data.ocularHistory || "No specific ocular history recorded. (e.g., Previous eye surgeries, chronic eye conditions like dry eye, history of eye trauma).",
-              currentMedications: data.currentMedications || ["Latanoprost 0.005% eye drops (once daily)", "Artificial tears (as needed)"],
-              treatmentHistory: data.treatmentHistory || [
-                { date: "2023-05-10", treatment: "Prescribed Latanoprost for Glaucoma", notes: "IOP was 25 mmHg." },
-                { date: "2022-11-20", treatment: "Cataract Surgery (Right Eye)", notes: "Successful, IOL implanted." },
-              ],
+              name: data.name || 'Unnamed Patient',
+              dob: data.dob || 'N/A', // Expecting string 'YYYY-MM-DD'
+              phone: data.phone || undefined,
+              email: data.email || undefined,
+              address: data.address || undefined,
+              emergencyContactName: data.emergencyContactName || undefined,
+              emergencyContactPhone: data.emergencyContactPhone || undefined,
+              insuranceProvider: data.insuranceProvider || undefined,
+              insurancePolicyNumber: data.insurancePolicyNumber || undefined,
+              medicalHistory: data.medicalHistory || "Not specified.",
+              ocularHistory: data.ocularHistory || "Not specified.",
+              currentMedications: Array.isArray(data.currentMedications) ? data.currentMedications : [],
+              // Ensure treatment history items have the expected structure
+              treatmentHistory: Array.isArray(data.treatmentHistory) ? data.treatmentHistory.map((item: any) => ({
+                    date: item.date || 'N/A', // Expecting string 'YYYY-MM-DD'
+                    treatment: item.treatment || 'N/A',
+                    notes: item.notes || undefined,
+                })) : [],
+              tags: Array.isArray(data.tags) ? data.tags : [],
+              userId: data.userId || undefined,
+              createdAt: data.createdAt,
+              updatedAt: data.updatedAt,
             };
-            setPatient(mockPatientData);
+            setPatient(loadedPatient);
           } else {
-            router.push("/patients"); 
+            setFetchError("Patient record not found.");
+            // router.push("/patients"); // Optionally redirect if not found
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error("Error fetching patient details:", error);
+          setFetchError(`Failed to load patient details: ${error.message}`);
         } finally {
           setLoading(false);
         }
       };
       fetchPatientDetails();
     } else if (!user) {
-       // User not loaded yet
+       // User not loaded yet, wait for auth context
+    } else if (!patientId) {
+        setFetchError("Invalid patient ID.");
+        setLoading(false);
     } else {
-        setLoading(false); 
+        // Should not happen if checks above are correct, but handle just in case
+        setLoading(false);
     }
-  }, [patientId, user, router]);
-  
+  }, [patientId, user, role, router]); // Add role and router to dependencies
+
   const DetailItem = ({ icon: Icon, label, value, children }: { icon?: React.ElementType, label: string, value?: string | React.ReactNode, children?: React.ReactNode }) => (
     (value || children) ? (
       <div className="flex items-start space-x-3 py-2">
@@ -92,10 +145,47 @@ export default function PatientDetailPage() {
     ) : null
   );
 
+  const calculateAge = (dobString: string): string => {
+     if (!dobString || dobString === 'N/A') return 'N/A';
+    try {
+        const birthDate = new Date(dobString);
+         // Check if the parsed date is valid
+        if (isNaN(birthDate.getTime())) {
+            throw new Error("Invalid date");
+        }
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return `${age} years old`;
+    } catch (e) {
+        console.error("Error calculating age:", e);
+        return "Invalid DOB";
+    }
+  };
+
+  const formatDate = (dateString: string): string => {
+       if (!dateString || dateString === 'N/A') return 'N/A';
+      try {
+          const date = new Date(dateString);
+          if (isNaN(date.getTime())) {
+            throw new Error("Invalid date");
+          }
+          // Use a consistent format, e.g., Aug 10, 2023
+          return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      } catch(e) {
+           console.error("Error formatting date:", e);
+           return "Invalid Date";
+      }
+  };
+
+
   if (loading) {
     return (
       <div className="container mx-auto py-10 px-4 max-w-4xl">
-        <Skeleton className="h-10 w-1/4 mb-6" /> 
+        <Skeleton className="h-10 w-1/4 mb-6" />
         <Card className="shadow-xl">
           <CardHeader>
             <Skeleton className="h-8 w-3/4 mb-2" />
@@ -117,7 +207,22 @@ export default function PatientDetailPage() {
     );
   }
 
-  if (!patient) {
+   if (fetchError) { // Display error if fetching failed
+     return (
+      <div className="container mx-auto py-10 px-4 max-w-4xl">
+         <Button onClick={() => router.back()} variant="outline" className="mb-6">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+         </Button>
+         <Alert variant="destructive" className="mt-6">
+           <AlertTriangle className="h-4 w-4" />
+           <AlertTitle>Error Loading Patient</AlertTitle>
+           <AlertDescription>{fetchError}</AlertDescription>
+         </Alert>
+       </div>
+     );
+   }
+
+  if (!patient) { // Should be covered by fetchError, but keep as a fallback
     return (
       <div className="container mx-auto py-10 px-4 text-center">
         <p className="text-xl text-muted-foreground">Patient not found or access denied.</p>
@@ -127,17 +232,6 @@ export default function PatientDetailPage() {
       </div>
     );
   }
-  
-  const calculateAge = (dobString: string): number => {
-    const birthDate = new Date(dobString);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
-    }
-    return age;
-  };
 
 
   return (
@@ -157,7 +251,8 @@ export default function PatientDetailPage() {
                   </CardDescription>
                 </div>
             </div>
-            { (role === "admin" || role === "doctor" || role === "receptionist") &&
+            {/* Allow editing only for specific roles */}
+            { (role === "admin" || role === "doctor" || role === "receptionist") && isDbAvailable &&
               <Button asChild variant="outline" className="mt-4 md:mt-0 border-primary text-primary hover:bg-primary/10">
                 <Link href={`/patients/${patient.id}/edit`}>
                   <Edit3 className="mr-2 h-4 w-4" /> Edit Patient
@@ -167,34 +262,36 @@ export default function PatientDetailPage() {
           </div>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
-          
+
           <section>
             <h3 className="text-xl font-semibold text-primary mb-3 border-b pb-2">Personal Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
-              <DetailItem icon={Calendar} label="Date of Birth" value={`${new Date(patient.dob).toLocaleDateString()} (${calculateAge(patient.dob)} years old)`} />
-              <DetailItem icon={Phone} label="Phone Number" value={patient.phone} />
-              <DetailItem icon={Mail} label="Email Address" value={patient.email} />
-              <DetailItem icon={MapPin} label="Address" value={patient.address} />
+              <DetailItem icon={Calendar} label="Date of Birth" value={`${formatDate(patient.dob)} (${calculateAge(patient.dob)})`} />
+              <DetailItem icon={Phone} label="Phone Number" value={patient.phone || 'N/A'} />
+              <DetailItem icon={Mail} label="Email Address" value={patient.email || 'N/A'} />
+              <DetailItem icon={MapPin} label="Address" value={patient.address || 'N/A'} />
             </div>
           </section>
           <Separator/>
 
-          {patient.tags && patient.tags.length > 0 && (
+          {patient.tags && Array.isArray(patient.tags) && patient.tags.length > 0 && (
             <section>
               <h3 className="text-xl font-semibold text-primary mb-3 border-b pb-2 flex items-center">
                 <Tag className="mr-2 h-5 w-5" /> Patient Tags
               </h3>
               <div className="flex flex-wrap gap-2">
                 {patient.tags.map((tag, index) => (
-                  <Badge key={index} variant="secondary" className="text-sm px-3 py-1">
-                    {tag}
-                  </Badge>
+                   typeof tag === 'string' ? (
+                      <Badge key={index} variant="secondary" className="text-sm px-3 py-1">
+                        {tag}
+                      </Badge>
+                   ) : null
                 ))}
               </div>
             </section>
           )}
            <Separator/>
-          
+
           <section>
             <h3 className="text-xl font-semibold text-primary mb-3 border-b pb-2">Emergency Contact</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
@@ -204,7 +301,7 @@ export default function PatientDetailPage() {
              {!patient.emergencyContactName && !patient.emergencyContactPhone && <p className="text-sm text-muted-foreground ml-8">No emergency contact information provided.</p>}
           </section>
            <Separator/>
-          
+
           <section>
             <h3 className="text-xl font-semibold text-primary mb-3 border-b pb-2">Insurance Details</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
@@ -214,7 +311,7 @@ export default function PatientDetailPage() {
             {!patient.insuranceProvider && !patient.insurancePolicyNumber && <p className="text-sm text-muted-foreground ml-8">No insurance information provided.</p>}
           </section>
           <Separator/>
-          
+
           {/* Enhanced EMR Sections */}
            <section>
             <h3 className="text-xl font-semibold text-primary mb-3 border-b pb-2 flex items-center"><FileText className="mr-2 h-5 w-5" />Medical Summary</h3>
@@ -225,9 +322,9 @@ export default function PatientDetailPage() {
 
           <section>
             <h3 className="text-xl font-semibold text-primary mb-3 border-b pb-2 flex items-center"><Pill className="mr-2 h-5 w-5" />Current Medications</h3>
-            {patient.currentMedications && patient.currentMedications.length > 0 ? (
+            {patient.currentMedications && Array.isArray(patient.currentMedications) && patient.currentMedications.length > 0 ? (
                  <ul className="list-disc list-inside ml-8 space-y-1 text-md text-foreground">
-                    {patient.currentMedications.map((med, index) => <li key={index}>{med}</li>)}
+                    {patient.currentMedications.map((med, index) => typeof med === 'string' ? <li key={index}>{med}</li> : null)}
                  </ul>
             ) : (
                  <p className="text-sm text-muted-foreground ml-8">No current medications listed.</p>
@@ -237,11 +334,11 @@ export default function PatientDetailPage() {
 
           <section>
             <h3 className="text-xl font-semibold text-primary mb-3 border-b pb-2 flex items-center"><History className="mr-2 h-5 w-5" />Treatment History</h3>
-            {patient.treatmentHistory && patient.treatmentHistory.length > 0 ? (
+            {patient.treatmentHistory && Array.isArray(patient.treatmentHistory) && patient.treatmentHistory.length > 0 ? (
                  <div className="space-y-3 ml-8">
                     {patient.treatmentHistory.map((item, index) => (
                         <div key={index} className="p-3 border-l-4 border-primary/50 bg-secondary/30 rounded-r-md">
-                            <p className="font-semibold text-foreground">{item.treatment} - <span className="text-sm text-muted-foreground">{new Date(item.date).toLocaleDateString()}</span></p>
+                            <p className="font-semibold text-foreground">{item.treatment || 'N/A'} - <span className="text-sm text-muted-foreground">{formatDate(item.date)}</span></p>
                             {item.notes && <p className="text-sm text-muted-foreground mt-1">Notes: {item.notes}</p>}
                         </div>
                     ))}
@@ -251,7 +348,7 @@ export default function PatientDetailPage() {
             )}
           </section>
           <Separator/>
-          
+
           {/* Placeholder for Diagnostic Images - for future integration */}
           {(role === 'doctor' || role === 'admin') && (
             <section>

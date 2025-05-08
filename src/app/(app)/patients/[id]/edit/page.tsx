@@ -20,16 +20,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useParams } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Loader2, UserCog, CalendarIcon, ArrowLeft, Tag, Pill, History, PlusCircle, Trash2, Eye } from "lucide-react";
+import { Loader2, UserCog, CalendarIcon, ArrowLeft, Tag, Pill, History, PlusCircle, Trash2, Eye, AlertTriangle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format, parseISO, isValid } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase"; // Import potentially null service
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"; // Added Alert components
 
 const treatmentHistorySchema = z.object({
   date: z.date({ required_error: "Treatment date is required."}),
@@ -60,9 +61,11 @@ export default function EditPatientPage() {
   const params = useParams();
   const patientId = params.id as string;
   const { user, role } = useAuth();
+  const isDbAvailable = !!db; // Check if db is initialized
 
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null); // State for fetch errors
 
   const form = useForm<z.infer<typeof patientFormSchema>>({
     resolver: zodResolver(patientFormSchema),
@@ -97,65 +100,97 @@ export default function EditPatientPage() {
         return;
     }
 
+     if (!db) {
+        setFetchError("Database service is unavailable. Cannot load patient data.");
+        setIsFetching(false);
+        return;
+    }
+
     const fetchPatientData = async () => {
       setIsFetching(true);
+      setFetchError(null);
       try {
         const patientDocRef = doc(db, "patients", patientId);
         const patientDocSnap = await getDoc(patientDocRef);
         if (patientDocSnap.exists()) {
           const data = patientDocSnap.data();
+
+          // Role check before proceeding (redundant with above but good practice)
+          if (role === 'patient' && data.userId !== user.uid) {
+              throw new Error("You do not have permission to edit this patient record.");
+          }
+
           form.reset({
             ...data,
-            dob: data.dob && isValid(parseISO(data.dob)) ? parseISO(data.dob) : undefined,
-            tags: data.tags && Array.isArray(data.tags) ? data.tags.join(', ') : '',
-            currentMedications: data.currentMedications && Array.isArray(data.currentMedications) ? data.currentMedications.join(', ') : '',
-            treatmentHistory: data.treatmentHistory?.map((item: any) => ({
+            // Ensure date parsing is robust
+            dob: data.dob && typeof data.dob === 'string' && isValid(parseISO(data.dob)) ? parseISO(data.dob) : undefined,
+            tags: Array.isArray(data.tags) ? data.tags.join(', ') : '',
+            currentMedications: Array.isArray(data.currentMedications) ? data.currentMedications.join(', ') : '',
+            treatmentHistory: Array.isArray(data.treatmentHistory) ? data.treatmentHistory.map((item: any) => ({
                 ...item,
-                date: item.date && isValid(parseISO(item.date)) ? parseISO(item.date) : new Date(),
-            })) || [],
+                // Ensure date is parsed correctly from 'YYYY-MM-DD' string
+                date: item.date && typeof item.date === 'string' && isValid(parseISO(item.date)) ? parseISO(item.date) : new Date(), // default to now if invalid
+            })).filter(item => item.date) : [], // Filter out invalid date entries
           });
         } else {
+          setFetchError("Patient not found.");
           toast({ title: "Error", description: "Patient not found.", variant: "destructive" });
-          router.push("/patients");
+          // Consider redirecting if not found
+          // router.push("/patients");
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to load patient data:", error);
-        toast({ title: "Error", description: "Failed to load patient data. Check console for details.", variant: "destructive" });
+        setFetchError(`Failed to load patient data: ${error.message}`);
+        toast({ title: "Error", description: `Failed to load patient data. ${error.message}`, variant: "destructive" });
       } finally {
         setIsFetching(false);
       }
     };
     fetchPatientData();
-  }, [patientId, user, form, router, toast, role]);
+  }, [patientId, user, form, router, toast, role]); // Added role
 
   async function onSubmit(values: z.infer<typeof patientFormSchema>) {
     if (!user) {
       toast({ title: "Authentication Error", description: "You must be logged in.", variant: "destructive" });
       return;
     }
+     if (!db) {
+        toast({ title: "Database Error", description: "Cannot save patient data. Database service is unavailable.", variant: "destructive" });
+        return;
+    }
     setIsLoading(true);
     try {
       const patientDocRef = doc(db, "patients", patientId);
+
+       // Optional: Re-fetch the document to ensure the user still has permission (if applicable)
+       // const currentDocSnap = await getDoc(patientDocRef);
+       // if (!currentDocSnap.exists() || (role === 'patient' && currentDocSnap.data()?.userId !== user.uid)) {
+       //    throw new Error("Permission denied or patient not found.");
+       // }
+
       const tagsArray = values.tags
         ? values.tags.split(',').map(tag => tag.trim()).filter(tag => tag !== '')
         : [];
-      
+
       const medicationsArray = values.currentMedications
         ? values.currentMedications.split(',').map(med => med.trim()).filter(med => med !== '')
         : [];
 
       const formattedTreatmentHistory = values.treatmentHistory?.map(item => ({
         ...item,
-        date: item.date.toISOString().split('T')[0],
-      }));
+         // Ensure date exists before formatting
+        date: item.date ? item.date.toISOString().split('T')[0] : undefined,
+      })).filter(item => item.date); // Remove items with undefined dates
 
       await updateDoc(patientDocRef, {
         ...values,
         tags: tagsArray,
         currentMedications: medicationsArray,
         treatmentHistory: formattedTreatmentHistory,
-        dob: values.dob.toISOString().split('T')[0], 
+        dob: values.dob.toISOString().split('T')[0],
         updatedAt: serverTimestamp(),
+        // Ensure userId is not accidentally overwritten if it exists
+        ...(values.userId && { userId: values.userId }), // Keep existing userId if form schema includes it
       });
       toast({
         title: "Patient Updated",
@@ -200,12 +235,36 @@ export default function EditPatientPage() {
     );
   }
 
+   if (fetchError) { // Display error if fetching failed
+     return (
+       <div className="container mx-auto py-10 px-4 max-w-3xl">
+         <Button onClick={() => router.back()} variant="outline" className="mb-6">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+         </Button>
+         <Alert variant="destructive" className="mt-6">
+           <AlertTriangle className="h-4 w-4" />
+           <AlertTitle>Error Loading Data</AlertTitle>
+           <AlertDescription>{fetchError}</AlertDescription>
+         </Alert>
+       </div>
+     );
+   }
+
 
   return (
     <div className="container mx-auto py-10 px-4 max-w-3xl">
       <Button onClick={() => router.back()} variant="outline" className="mb-6">
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Patient Details
       </Button>
+       {!isDbAvailable && (
+             <Alert variant="destructive" className="mb-6">
+               <AlertTriangle className="h-4 w-4" />
+               <AlertTitle>Database Unavailable</AlertTitle>
+               <AlertDescription>
+                 Cannot save changes. Please ensure Firebase is configured correctly and try again later.
+               </AlertDescription>
+             </Alert>
+       )}
       <Card className="shadow-xl">
         <CardHeader>
           <div className="flex items-center space-x-3">
@@ -221,6 +280,7 @@ export default function EditPatientPage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            {/* Basic Information */}
             <h3 className="text-xl font-semibold text-primary pt-4 border-t">Basic Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
@@ -230,7 +290,7 @@ export default function EditPatientPage() {
                     <FormItem>
                       <FormLabel>Full Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="John Doe" {...field} />
+                        <Input placeholder="John Doe" {...field} disabled={!isDbAvailable}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -251,6 +311,7 @@ export default function EditPatientPage() {
                                 "w-full pl-3 text-left font-normal",
                                 !field.value && "text-muted-foreground"
                               )}
+                              disabled={!isDbAvailable}
                             >
                               {field.value ? (
                                 format(field.value, "PPP")
@@ -267,7 +328,7 @@ export default function EditPatientPage() {
                             selected={field.value}
                             onSelect={field.onChange}
                             disabled={(date) =>
-                              date > new Date() || date < new Date("1900-01-01")
+                              date > new Date() || date < new Date("1900-01-01") || !isDbAvailable
                             }
                             initialFocus
                           />
@@ -284,7 +345,7 @@ export default function EditPatientPage() {
                     <FormItem>
                       <FormLabel>Phone Number</FormLabel>
                       <FormControl>
-                        <Input type="tel" placeholder="e.g., (555) 123-4567" {...field} />
+                        <Input type="tel" placeholder="e.g., (555) 123-4567" {...field} disabled={!isDbAvailable}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -297,14 +358,14 @@ export default function EditPatientPage() {
                     <FormItem>
                       <FormLabel>Email Address</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="patient@example.com" {...field} />
+                        <Input type="email" placeholder="patient@example.com" {...field} disabled={!isDbAvailable}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-
+              {/* Address */}
               <FormField
                 control={form.control}
                 name="address"
@@ -312,13 +373,13 @@ export default function EditPatientPage() {
                   <FormItem>
                     <FormLabel>Address</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="123 Main St, Anytown, USA" {...field} />
+                      <Textarea placeholder="123 Main St, Anytown, USA" {...field} disabled={!isDbAvailable}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+              {/* Tags */}
               <FormField
                 control={form.control}
                 name="tags"
@@ -329,7 +390,7 @@ export default function EditPatientPage() {
                       Patient Tags
                     </FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., Glaucoma, High Risk, Follow-up Needed" {...field} />
+                      <Input placeholder="e.g., Glaucoma, High Risk, Follow-up Needed" {...field} disabled={!isDbAvailable}/>
                     </FormControl>
                     <FormDescription>
                       Enter tags separated by commas. These help categorize and find patients.
@@ -339,6 +400,8 @@ export default function EditPatientPage() {
                 )}
               />
               <Separator />
+
+               {/* Medical Information */}
               <h3 className="text-xl font-semibold text-primary pt-2">Medical Information</h3>
                <FormField
                 control={form.control}
@@ -347,7 +410,7 @@ export default function EditPatientPage() {
                   <FormItem>
                     <FormLabel className="flex items-center"><Eye className="mr-2 h-4 w-4" />Ocular History</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Previous eye surgeries, chronic conditions (dry eye, uveitis), trauma, family history of eye diseases..." {...field} />
+                      <Textarea placeholder="Previous eye surgeries, chronic conditions (dry eye, uveitis), trauma, family history of eye diseases..." {...field} disabled={!isDbAvailable}/>
                     </FormControl>
                      <FormDescription>Detail specific eye-related medical history.</FormDescription>
                     <FormMessage />
@@ -361,7 +424,7 @@ export default function EditPatientPage() {
                   <FormItem>
                     <FormLabel>General Medical History</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Known allergies, chronic systemic conditions (diabetes, hypertension), past major surgeries, etc." {...field} />
+                      <Textarea placeholder="Known allergies, chronic systemic conditions (diabetes, hypertension), past major surgeries, etc." {...field} disabled={!isDbAvailable}/>
                     </FormControl>
                     <FormDescription>Summarize relevant general medical background.</FormDescription>
                     <FormMessage />
@@ -375,7 +438,7 @@ export default function EditPatientPage() {
                   <FormItem>
                     <FormLabel className="flex items-center"><Pill className="mr-2 h-4 w-4" />Current Medications</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="e.g., Latanoprost 0.005% (1 drop OD nightly), Metformin 500mg (oral, BID), Aspirin 81mg (daily)" {...field} />
+                      <Textarea placeholder="e.g., Latanoprost 0.005% (1 drop OD nightly), Metformin 500mg (oral, BID), Aspirin 81mg (daily)" {...field} disabled={!isDbAvailable}/>
                     </FormControl>
                     <FormDescription>List all current medications (eye-related and systemic), separated by commas.</FormDescription>
                     <FormMessage />
@@ -383,6 +446,7 @@ export default function EditPatientPage() {
                 )}
               />
 
+              {/* Treatment History */}
               <div>
                 <FormLabel className="flex items-center text-lg mb-2"><History className="mr-2 h-5 w-5" />Treatment History</FormLabel>
                 {fields.map((item, index) => (
@@ -396,14 +460,14 @@ export default function EditPatientPage() {
                            <Popover>
                             <PopoverTrigger asChild>
                               <FormControl>
-                                <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")} disabled={!isDbAvailable}>
                                   {field.value ? format(field.value, "PPP") : <span>Pick date</span>}
                                   <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                 </Button>
                               </FormControl>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                              <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus disabled={!isDbAvailable}/>
                             </PopoverContent>
                           </Popover>
                           <FormMessage />
@@ -416,7 +480,7 @@ export default function EditPatientPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Treatment/Procedure</FormLabel>
-                          <FormControl><Input placeholder="e.g., SLT, Anti-VEGF injection" {...field} /></FormControl>
+                          <FormControl><Input placeholder="e.g., SLT, Anti-VEGF injection" {...field} disabled={!isDbAvailable}/></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -427,23 +491,24 @@ export default function EditPatientPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Notes (Optional)</FormLabel>
-                          <FormControl><Input placeholder="e.g., OD, IOP reduced to 15" {...field} /></FormControl>
+                          <FormControl><Input placeholder="e.g., OD, IOP reduced to 15" {...field} disabled={!isDbAvailable}/></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} className="mb-1">
+                    <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} className="mb-1" disabled={!isDbAvailable}>
                       <Trash2 className="h-4 w-4" />
                       <span className="sr-only">Remove treatment</span>
                     </Button>
                   </div>
                 ))}
-                <Button type="button" variant="outline" size="sm" onClick={() => append({ date: new Date(), treatment: "", notes: "" })}>
+                <Button type="button" variant="outline" size="sm" onClick={() => append({ date: new Date(), treatment: "", notes: "" })} disabled={!isDbAvailable}>
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Treatment Record
                 </Button>
               </div>
               <Separator/>
-              
+
+              {/* Administrative Information */}
               <h3 className="text-xl font-semibold text-primary pt-2">Administrative Information</h3>
               <h4 className="text-lg font-semibold text-primary/80">Emergency Contact (Optional)</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -454,7 +519,7 @@ export default function EditPatientPage() {
                     <FormItem>
                       <FormLabel>Contact Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Jane Doe" {...field} />
+                        <Input placeholder="Jane Doe" {...field} disabled={!isDbAvailable}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -467,7 +532,7 @@ export default function EditPatientPage() {
                     <FormItem>
                       <FormLabel>Contact Phone</FormLabel>
                       <FormControl>
-                        <Input type="tel" placeholder="(555) 987-6543" {...field} />
+                        <Input type="tel" placeholder="(555) 987-6543" {...field} disabled={!isDbAvailable}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -484,7 +549,7 @@ export default function EditPatientPage() {
                     <FormItem>
                       <FormLabel>Provider</FormLabel>
                       <FormControl>
-                        <Input placeholder="HealthNet Ins." {...field} />
+                        <Input placeholder="HealthNet Ins." {...field} disabled={!isDbAvailable}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -497,21 +562,22 @@ export default function EditPatientPage() {
                     <FormItem>
                       <FormLabel>Policy Number</FormLabel>
                       <FormControl>
-                        <Input placeholder="POL123456789" {...field} />
+                        <Input placeholder="POL123456789" {...field} disabled={!isDbAvailable}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-              
+
+              {/* Action Buttons */}
               <div className="flex justify-end space-x-3 pt-6 border-t mt-8">
                 <Button type="button" variant="outline" onClick={() => router.back()}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isLoading}>
+                <Button type="submit" disabled={isLoading || !isDbAvailable}>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Save Changes
+                   {!isDbAvailable ? 'Database Unavailable' : 'Save Changes'}
                 </Button>
               </div>
             </form>
