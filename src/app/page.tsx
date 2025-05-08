@@ -40,7 +40,7 @@ export default function HomePage() {
               <div className="flex flex-col justify-center space-y-4">
                 <div className="space-y-2">
                   <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none text-primary">
-                    Revolutionizing Eye Care with Netram Vision
+                    Revolutionizing Eye Care with Vision Care Plus
                   </h1>
                   <p className="max-w-[600px] text-muted-foreground md:text-xl">
                     An intelligent platform for ophthalmologists, empowering
@@ -80,7 +80,7 @@ export default function HomePage() {
                   Everything You Need for Modern Eye Care
                 </h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                  Netram Vision provides a suite of tools designed to enhance
+                  Vision Care Plus provides a suite of tools designed to enhance
                   efficiency and improve patient outcomes in your ophthalmology practice.
                 </p>
               </div>
@@ -154,7 +154,7 @@ export default function HomePage() {
                 Ready to Transform Your Practice?
               </h2>
               <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                Join Netram Vision today and experience the future of eye care.
+                Join Vision Care Plus today and experience the future of eye care.
                 Sign up for a demo or start your free trial.
               </p>
             </div>
@@ -173,7 +173,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t bg-background">
         <p className="text-xs text-muted-foreground">
-          &copy; {new Date().getFullYear()} Netram Vision. All rights reserved.
+          &copy; {new Date().getFullYear()} Vision Care Plus. All rights reserved.
         </p>
         <nav className="sm:ml-auto flex gap-4 sm:gap-6">
           <Link href="/terms" className="text-xs hover:underline underline-offset-4 text-muted-foreground">

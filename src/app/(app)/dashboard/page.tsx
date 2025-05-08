@@ -30,7 +30,7 @@ export default function DashboardPage() {
       case "admin":
         return "Oversee the entire system, manage users, and view analytics.";
       default:
-        return "Welcome to your Netram Vision dashboard.";
+        return "Welcome to your Vision Care Plus dashboard.";
     }
   };
   

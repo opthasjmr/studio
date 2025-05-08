@@ -7,7 +7,7 @@ import { Toaster } from '@/components/ui/toaster';
 import AppProviders from '@/components/AppProviders';
 
 export const metadata: Metadata = {
-  title: 'Netram Vision',
+  title: 'Vision Care Plus',
   description: 'Advanced Eye Health Care Software',
   manifest: '/manifest.json',
   themeColor: [
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'NetramVision', // Should match short_name in manifest.json
+    title: 'VisionCarePlus', // Should match short_name in manifest.json
   },
   icons: {
     apple: [

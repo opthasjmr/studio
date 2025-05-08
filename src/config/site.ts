@@ -1,7 +1,7 @@
 export type SiteConfig = typeof siteConfig;
 
 export const siteConfig = {
-  name: "Netram Vision",
+  name: "Vision Care Plus",
   description: "Advanced Eye Health Care Software.",
   mainNav: [
     {

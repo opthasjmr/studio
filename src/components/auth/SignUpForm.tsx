@@ -78,7 +78,7 @@ export function SignUpForm() {
       <CardHeader className="items-center text-center">
         <SiteLogo />
         <CardTitle className="text-2xl mt-4">Create an Account</CardTitle>
-        <CardDescription>Join Netram Vision to manage your eye health.</CardDescription>
+        <CardDescription>Join Vision Care Plus to manage your eye health.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
