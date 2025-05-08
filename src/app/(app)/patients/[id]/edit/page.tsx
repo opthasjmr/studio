@@ -19,7 +19,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useParams } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Loader2, UserCog, CalendarIcon, ArrowLeft } from "lucide-react";
+import { Loader2, UserCog, CalendarIcon, ArrowLeft, Tag } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
@@ -40,6 +40,7 @@ const patientFormSchema = z.object({
   insuranceProvider: z.string().optional(),
   insurancePolicyNumber: z.string().optional(),
   medicalHistory: z.string().optional(),
+  tags: z.string().optional(),
 });
 
 export default function EditPatientPage() {
@@ -64,6 +65,7 @@ export default function EditPatientPage() {
       insuranceProvider: "",
       insurancePolicyNumber: "",
       medicalHistory: "",
+      tags: "",
     },
   });
 
@@ -84,7 +86,8 @@ export default function EditPatientPage() {
           const data = patientDocSnap.data();
           form.reset({
             ...data,
-            dob: data.dob ? parseISO(data.dob) : undefined, // Convert DOB string to Date object
+            dob: data.dob ? parseISO(data.dob) : undefined,
+            tags: data.tags && Array.isArray(data.tags) ? data.tags.join(', ') : '',
           });
         } else {
           toast({ title: "Error", description: "Patient not found.", variant: "destructive" });
@@ -107,9 +110,14 @@ export default function EditPatientPage() {
     setIsLoading(true);
     try {
       const patientDocRef = doc(db, "patients", patientId);
+      const tagsArray = values.tags
+        ? values.tags.split(',').map(tag => tag.trim()).filter(tag => tag !== '')
+        : [];
+
       await updateDoc(patientDocRef, {
         ...values,
-        dob: values.dob.toISOString().split('T')[0], // Store date as YYYY-MM-DD string
+        tags: tagsArray, // Save tags as an array
+        dob: values.dob.toISOString().split('T')[0], 
         updatedAt: serverTimestamp(),
       });
       toast({
@@ -138,7 +146,7 @@ export default function EditPatientPage() {
             <Skeleton className="h-4 w-3/4" />
           </CardHeader>
           <CardContent className="space-y-8">
-            {[...Array(5)].map((_, i) => (
+            {[...Array(6)].map((_, i) => ( // Increased array size for new field
               <div key={i} className="space-y-2">
                 <Skeleton className="h-4 w-1/4" />
                 <Skeleton className="h-10 w-full" />
@@ -267,6 +275,27 @@ export default function EditPatientPage() {
                     <FormControl>
                       <Textarea placeholder="123 Main St, Anytown, USA" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <h3 className="text-lg font-semibold text-primary pt-4 border-t">Patient Tags</h3>
+               <FormField
+                control={form.control}
+                name="tags"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center">
+                      <Tag className="mr-2 h-4 w-4" />
+                      Tags
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Glaucoma, High Risk, Follow-up Needed" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Enter tags separated by commas. These help categorize and find patients.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

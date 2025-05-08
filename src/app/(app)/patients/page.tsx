@@ -3,27 +3,26 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Users, Search, PlusCircle } from "lucide-react";
+import { Users, Search, PlusCircle, Tag } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { DataTable } from "@/components/shared/DataTable"; // Assuming a generic DataTable component
-import type { ColumnDef } from "@tanstack/react-table"; // For DataTable typing
+import { DataTable } from "@/components/shared/DataTable"; 
+import type { ColumnDef } from "@tanstack/react-table"; 
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where, DocumentData } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 
-// Define Patient type based on Firestore structure
 interface Patient {
   id: string;
   name: string;
-  dob: string; // Or Date
+  dob: string; 
   phone: string;
-  lastVisit?: string; // Or Date
+  lastVisit?: string; 
   tags?: string[];
 }
 
-// Define columns for the DataTable
 const columns: ColumnDef<Patient>[] = [
   {
     accessorKey: "name",
@@ -45,8 +44,20 @@ const columns: ColumnDef<Patient>[] = [
   },
   {
     accessorKey: "tags",
-    header: "Tags",
-    cell: ({ row }) => (row.original.tags || []).join(", "),
+    header: () => <div className="flex items-center"><Tag className="mr-1 h-4 w-4" />Tags</div>,
+    cell: ({ row }) => {
+      const tags = row.original.tags;
+      if (!tags || tags.length === 0) return <span className="text-muted-foreground">N/A</span>;
+      return (
+        <div className="flex flex-wrap gap-1">
+          {tags.map((tag, index) => (
+            <Badge key={index} variant="outline" className="text-xs px-1.5 py-0.5">
+              {tag}
+            </Badge>
+          ))}
+        </div>
+      );
+    },
   },
   {
     id: "actions",
@@ -77,11 +88,8 @@ export default function PatientRecordsPage() {
         if (role === 'admin' || role === 'receptionist') {
           patientsQuery = query(collection(db, "patients"));
         } else if (role === 'doctor') {
-          // Assuming doctors have an 'assignedPatients' field or similar logic
-          // For simplicity, fetching all for now, but this needs refinement for real-world scenarios
-          // e.g., query(collection(db, "patients"), where("assignedDoctorId", "==", user.uid));
           patientsQuery = query(collection(db, "patients")); 
-        } else { // Patient role
+        } else { 
           patientsQuery = query(collection(db, "patients"), where("userId", "==", user.uid));
         }
         
@@ -90,7 +98,6 @@ export default function PatientRecordsPage() {
         setPatients(patientData);
       } catch (error) {
         console.error("Error fetching patients: ", error);
-        // Add toast notification for error
       } finally {
         setLoading(false);
       }
@@ -101,7 +108,8 @@ export default function PatientRecordsPage() {
 
   const filteredPatients = patients.filter(patient =>
     patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (patient.phone && patient.phone.includes(searchTerm))
+    (patient.phone && patient.phone.includes(searchTerm)) ||
+    (patient.tags && patient.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())))
   );
 
   if (loading) {
@@ -148,7 +156,7 @@ export default function PatientRecordsPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Search patients by name or phone..."
+                placeholder="Search patients by name, phone, or tag..."
                 className="pl-10 w-full md:w-1/2"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}

@@ -7,9 +7,10 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Edit3, Loader2, UserCircle, Calendar, Phone, Mail, MapPin, ShieldAlert, Briefcase, FileText } from "lucide-react";
+import { ArrowLeft, Edit3, Loader2, UserCircle, Calendar, Phone, Mail, MapPin, ShieldAlert, Briefcase, FileText, Tag } from "lucide-react";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 
 interface PatientDetails extends DocumentData {
   id: string;
@@ -23,13 +24,13 @@ interface PatientDetails extends DocumentData {
   insuranceProvider?: string;
   insurancePolicyNumber?: string;
   medicalHistory?: string;
-  // Add other fields as necessary
+  tags?: string[];
 }
 
 export default function PatientDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { user, role }_ = useAuth(); // Role might be used for edit permissions
+  const { user, role } = useAuth(); 
   const [patient, setPatient] = useState<PatientDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const patientId = params.id as string;
@@ -43,25 +44,21 @@ export default function PatientDetailPage() {
           const patientDocSnap = await getDoc(patientDocRef);
 
           if (patientDocSnap.exists()) {
-            // TODO: Add role-based access control here
-            // For example, check if the current user (doctor/receptionist/admin) has permission or if it's the patient themselves.
             setPatient({ id: patientDocSnap.id, ...patientDocSnap.data() } as PatientDetails);
           } else {
-            // Handle patient not found
-            router.push("/patients"); // Or a 404 page
+            router.push("/patients"); 
           }
         } catch (error) {
           console.error("Error fetching patient details:", error);
-          // Handle error, e.g., show toast
         } finally {
           setLoading(false);
         }
       };
       fetchPatientDetails();
     } else if (!user) {
-       // If user is not loaded yet, wait. If user is null (not logged in), middleware should handle it.
+       // User not loaded yet
     } else {
-        setLoading(false); // No patientId
+        setLoading(false); 
     }
   }, [patientId, user, router]);
   
@@ -87,7 +84,7 @@ export default function PatientDetailPage() {
             <Skeleton className="h-4 w-1/2" />
           </CardHeader>
           <CardContent className="space-y-6">
-            {[...Array(6)].map((_, i) => (
+            {[...Array(7)].map((_, i) => ( // Increased array size for new section
               <div key={i} className="flex items-start space-x-3">
                 <Skeleton className="h-6 w-6 rounded-full" />
                 <div className="w-full">
@@ -113,7 +110,6 @@ export default function PatientDetailPage() {
     );
   }
   
-  // Calculate age
   const calculateAge = (dobString: string): number => {
     const birthDate = new Date(dobString);
     const today = new Date();
@@ -164,6 +160,21 @@ export default function PatientDetailPage() {
             </div>
           </section>
 
+          {patient.tags && patient.tags.length > 0 && (
+            <section>
+              <h3 className="text-xl font-semibold text-primary mb-4 border-b pb-2 flex items-center">
+                <Tag className="mr-2 h-5 w-5" /> Patient Tags
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {patient.tags.map((tag, index) => (
+                  <Badge key={index} variant="secondary" className="text-sm px-3 py-1">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            </section>
+          )}
+
           <section>
             <h3 className="text-xl font-semibold text-primary mb-4 border-b pb-2">Emergency Contact</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
@@ -190,17 +201,6 @@ export default function PatientDetailPage() {
                  <p className="text-sm text-muted-foreground">No medical history summary provided.</p>
             )}
           </section>
-
-          {/* Placeholder for future sections like Appointments, Medical Records, Diagnostic Images */}
-          {/* <section>
-            <h3 className="text-xl font-semibold text-primary mb-4 border-b pb-2">Appointments</h3>
-            <p className="text-muted-foreground">Appointments will be listed here.</p>
-          </section>
-          <section>
-            <h3 className="text-xl font-semibold text-primary mb-4 border-b pb-2">Medical Records (EMR)</h3>
-            <p className="text-muted-foreground">Medical records will be displayed here.</p>
-          </section> */}
-
         </CardContent>
       </Card>
     </div>

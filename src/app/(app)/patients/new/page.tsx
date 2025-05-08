@@ -19,7 +19,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Loader2, UserPlus, CalendarIcon } from "lucide-react";
+import { Loader2, UserPlus, CalendarIcon, Tag } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -40,7 +40,7 @@ const patientFormSchema = z.object({
   insuranceProvider: z.string().optional(),
   insurancePolicyNumber: z.string().optional(),
   medicalHistory: z.string().optional(),
-  // tags: z.array(z.string()).optional(), // For future implementation
+  tags: z.string().optional(),
 });
 
 export default function NewPatientPage() {
@@ -61,6 +61,7 @@ export default function NewPatientPage() {
       insuranceProvider: "",
       insurancePolicyNumber: "",
       medicalHistory: "",
+      tags: "",
     },
   });
 
@@ -71,10 +72,15 @@ export default function NewPatientPage() {
     }
     setIsLoading(true);
     try {
+      const tagsArray = values.tags 
+        ? values.tags.split(',').map(tag => tag.trim()).filter(tag => tag !== '') 
+        : [];
+
       await addDoc(collection(db, "patients"), {
         ...values,
-        dob: values.dob.toISOString().split('T')[0], // Store date as YYYY-MM-DD string
-        userId: user.uid, // Link patient to the creating user (e.g., receptionist or doctor)
+        tags: tagsArray, // Save tags as an array
+        dob: values.dob.toISOString().split('T')[0], 
+        userId: user.uid, 
         createdAt: serverTimestamp(),
       });
       toast({
@@ -207,6 +213,27 @@ export default function NewPatientPage() {
                 )}
               />
               
+              <h3 className="text-lg font-semibold text-primary pt-4 border-t">Patient Tags</h3>
+               <FormField
+                control={form.control}
+                name="tags"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center">
+                      <Tag className="mr-2 h-4 w-4" />
+                      Tags
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Glaucoma, High Risk, Follow-up Needed" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Enter tags separated by commas. These help categorize and find patients.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <h3 className="text-lg font-semibold text-primary pt-4 border-t">Emergency Contact (Optional)</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <FormField
