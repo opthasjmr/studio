@@ -12,7 +12,7 @@ export const siteConfig = {
     {
       title: "Analyze Scan",
       href: "/analyze-scan",
-      authRequired: true, 
+      authRequired: true,
     },
     {
       title: "Request Demo",
@@ -50,7 +50,7 @@ export const siteConfig = {
     {
       title: "Reception Desk",
       href: "/reception/dashboard",
-      icon: "ClipboardList", 
+      icon: "ClipboardList",
       roles: ["receptionist", "admin"],
     },
     {
@@ -74,6 +74,12 @@ export const siteConfig = {
       href: "/analyze-scan",
       icon: "ScanEye",
       roles: ["admin", "doctor"],
+    },
+     {
+      title: "Research Assistant", // New Feature
+      href: "/research-assistant",
+      icon: "Wand2", // Using Wand2 icon for AI Assistant
+      roles: ["admin", "doctor"], // Primarily for doctors and researchers/admins
     },
     {
       title: "EMR",

@@ -8,7 +8,7 @@ interface SearchResultItem {
   title: string;
   summary: string;
   url: string;
-  originalSummary?: string; 
+  originalSummary?: string;
   image_url?: string; // For Wikipedia images
 }
 
@@ -23,7 +23,7 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 async function fetchWikipediaSummary(query: string): Promise<SearchResultItem | null> {
   try {
     const wikiResponse = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query)}`, {
-      headers: { 'User-Agent': 'VisionCarePlusApp/1.0 (contact@example.com)' } 
+      headers: { 'User-Agent': 'VisionCarePlusApp/1.0 (contact@example.com)' }
     });
     if (!wikiResponse.ok) {
       console.warn(`Wikipedia API error for query "${query}": ${wikiResponse.status}`);
@@ -71,18 +71,18 @@ async function fetchPubMedArticles(query: string, retmax = 3): Promise<SearchRes
       return [];
     }
     const efetchData = await efetchResponse.json();
-    
+
     const articles: SearchResultItem[] = [];
     if (efetchData.result) {
       for (const id of idList) {
         const articleData = efetchData.result[id];
         if (articleData) {
           const initialSummary = `Authors: ${articleData.authors?.map((a: {name: string}) => a.name).join(", ") || "N/A"}. Journal: ${articleData.source || "N/A"}. PubDate: ${articleData.pubdate || "N/A"}. Title: ${articleData.title || "Untitled Article"}`;
-          
+
           articles.push({
             source: "PubMed",
             title: articleData.title || "Untitled Article",
-            summary: initialSummary, 
+            summary: initialSummary,
             originalSummary: initialSummary,
             url: `https://pubmed.ncbi.nlm.nih.gov/${id}/`,
           });
@@ -141,6 +141,24 @@ async function fetchAOCET(query: string): Promise<SearchResultItem[]> {
         return [];
     }
 }
+
+async function fetchJMR(query: string): Promise<SearchResultItem[]> {
+    try {
+        // JMR doesn't have a direct search API, so link to a Google Scholar search scoped to it
+        const searchQuery = `"${query}" source:"Journal of Medical Research"`; // Example scoping
+        const searchUrl = `https://scholar.google.com/scholar?q=${encodeURIComponent(searchQuery)}`;
+        return [{
+            source: "Journal of Medical Research (JMR) (via Google Scholar)",
+            title: `Search JMR for "${query}"`,
+            summary: `Search for articles related to "${query}" potentially published in the Journal of Medical Research, using Google Scholar.`,
+            url: searchUrl,
+        }];
+    } catch (error) {
+        console.error(`Error creating JMR search link for "${query}":`, error);
+        return [];
+    }
+}
+
 
 async function fetchGoogleSearch(query: string): Promise<SearchResultItem[]> {
     try {
@@ -205,39 +223,39 @@ export async function GET(request: NextRequest) {
         }
     }
 
+    // Fetch results based on selected source
+    const fetchPromises: Promise<SearchResultItem[] | SearchResultItem | null>[] = [];
+
     if (source === "all" || source === "wikipedia") {
-      const wikiResult = await fetchWikipediaSummary(query);
-      if (wikiResult) results.push(wikiResult);
+      fetchPromises.push(fetchWikipediaSummary(query));
     }
-
     if (source === "all" || source === "pubmed") {
-      const pubmedResults = await fetchPubMedArticles(query);
-      results.push(...pubmedResults);
+      fetchPromises.push(fetchPubMedArticles(query));
     }
-    
     if (source === "all" || source === "medlineplus") {
-        const medlineResults = await fetchMedlinePlus(query);
-        results.push(...medlineResults);
+      fetchPromises.push(fetchMedlinePlus(query));
     }
-
     if (source === "all" || source === "googlescholar") {
-        const googleScholarResults = await fetchGoogleScholar(query);
-        results.push(...googleScholarResults);
+      fetchPromises.push(fetchGoogleScholar(query));
     }
-     if (source === "all" || source === "google") {
-        const googleResults = await fetchGoogleSearch(query);
-        results.push(...googleResults);
+    if (source === "all" || source === "google") {
+      fetchPromises.push(fetchGoogleSearch(query));
     }
-
     if (source === "all" || source === "university") {
-        const universityResults = await fetchUniversitySearch(query);
-        results.push(...universityResults);
+      fetchPromises.push(fetchUniversitySearch(query));
+    }
+    if (source === "all" || source === "aocet") {
+      fetchPromises.push(fetchAOCET(query));
+    }
+    if (source === "all" || source === "jmr") { // Added JMR fetch
+       fetchPromises.push(fetchJMR(query));
     }
 
-    if (source === "all" || source === "aocet") {
-        const aoCETResults = await fetchAOCET(query);
-        results.push(...aoCETResults);
-    }
+    const fetchedResults = await Promise.all(fetchPromises);
+
+    // Flatten and filter null results
+    results = fetchedResults.flat().filter((item): item is SearchResultItem => item !== null);
+
 
     // AI Summarization for individual PubMed results (existing flow)
     results = await Promise.all(results.map(async (item) => {
@@ -253,7 +271,7 @@ export async function GET(request: NextRequest) {
       }
       return item;
     }));
-    
+
     const responseData: MedicalSearchResponse = { aiComprehensiveSummary, results };
     searchCache.set(cacheKey, { timestamp: Date.now(), data: responseData });
     return NextResponse.json(responseData);

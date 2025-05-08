@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -33,8 +34,10 @@ import {
   LogOut,
   ChevronDown,
   ChevronUp,
-  ScanEye, 
-  ClipboardList, // Added ClipboardList
+  ScanEye,
+  ClipboardList,
+  Wand2, // Added Wand2 icon
+  CalendarPlus, // Added CalendarPlus for sub-item
 } from "lucide-react";
 import type React from 'react';
 import { useState } from 'react';
@@ -65,6 +68,7 @@ const navItems = siteConfig.sidebarNav.map(item => ({
       case "Video": return Video;
       case "Settings": return Settings;
       case "ClipboardList": return ClipboardList;
+      case "Wand2": return Wand2; // Added Wand2 mapping
       default: return LayoutDashboard; // Fallback icon
     }
   })(),
@@ -73,6 +77,7 @@ const navItems = siteConfig.sidebarNav.map(item => ({
     icon: (() => {
       switch (child.icon) {
         case "CalendarDays": return CalendarDays;
+        case "CalendarPlus": return CalendarPlus; // Added CalendarPlus mapping
         // Add other child icons if needed
         default: return CalendarDays;
       }
@@ -90,7 +95,7 @@ export function AppSidebar() {
 
   const handleSignOut = async () => {
     await signOutUser();
-    if(setOpenMobile) setOpenMobile(false); 
+    if(setOpenMobile) setOpenMobile(false);
     router.push("/login");
   };
 
@@ -98,7 +103,7 @@ export function AppSidebar() {
     setOpenSubmenus(prev => ({ ...prev, [label]: !prev[label] }));
   };
 
-  if (!user) return null; 
+  if (!user) return null;
 
   const filteredNavItems = navItems.filter(item => role && item.roles.includes(role));
 
@@ -117,7 +122,7 @@ export function AppSidebar() {
                   if (item.children) {
                     toggleSubmenu(item.label);
                   } else {
-                     if(setOpenMobile) setOpenMobile(false); 
+                     if(setOpenMobile) setOpenMobile(false);
                     router.push(item.href);
                   }
                 }}
@@ -133,11 +138,11 @@ export function AppSidebar() {
                 <SidebarMenuSub>
                   {item.children.filter(child => role && child.roles.includes(role)).map(subItem => (
                     <SidebarMenuSubItem key={subItem.label}>
-                      <SidebarMenuSubButton 
-                        asChild 
+                      <SidebarMenuSubButton
+                        asChild
                         isActive={pathname === subItem.href}
                         onClick={() => {
-                           if(setOpenMobile) setOpenMobile(false); 
+                           if(setOpenMobile) setOpenMobile(false);
                         }}
                        >
                         <Link href={subItem.href}>

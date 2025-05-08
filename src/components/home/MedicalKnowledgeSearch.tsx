@@ -5,7 +5,7 @@ import { useState, type ChangeEvent, useRef } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label"; // Import Label
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -138,9 +138,9 @@ export function MedicalKnowledgeSearch() {
                 body: formData,
             });
 
-            let errorText = null;
-            let responseData;
-            let tempResponseBodyClone = response.clone(); // Clone response
+             let errorText = null;
+             let responseData;
+             let tempResponseBodyClone = response.clone(); // Clone response
 
             try {
                 // Attempt to parse JSON first
@@ -155,7 +155,9 @@ export function MedicalKnowledgeSearch() {
                     if (!response.ok) { // Still check original response status
                         errorText = text || `File analysis failed: ${response.status} ${response.statusText}`;
                     } else {
+                        // If response was OK but not JSON, it's an unexpected format
                         errorText = "Received unexpected response format from server.";
+                        console.error("Unexpected non-JSON response:", text); // Log the unexpected text
                     }
                 } catch (textError) {
                     console.error("Failed to read error response body:", textError);
@@ -167,6 +169,7 @@ export function MedicalKnowledgeSearch() {
             if (errorText) {
                 throw new Error(errorText);
             }
+
 
             // If response.ok is true, and JSON was parsed
             const data: { diagnosis_result: any, result_type: 'document_analysis' | 'image_analysis' } = responseData;
@@ -186,9 +189,9 @@ export function MedicalKnowledgeSearch() {
                 `/api/medical-search?query=${encodeURIComponent(query)}&source=${source}&summarize=${shouldRequestAISummary}`
             );
 
-            let errorText = null;
-            let responseData;
-            let tempResponseBodyClone = response.clone(); // Clone response
+             let errorText = null;
+             let responseData;
+             let tempResponseBodyClone = response.clone(); // Clone response
 
              try {
                 // Attempt to parse JSON first
@@ -203,7 +206,9 @@ export function MedicalKnowledgeSearch() {
                      if (!response.ok) { // Still check original response status
                         errorText = text || `Search failed: ${response.status} ${response.statusText}`;
                     } else {
+                        // If response was OK but not JSON, it's an unexpected format
                         errorText = "Received unexpected response format from server.";
+                        console.error("Unexpected non-JSON response:", text); // Log the unexpected text
                     }
                 } catch (textError) {
                     console.error("Failed to read response body:", textError);
@@ -249,8 +254,8 @@ export function MedicalKnowledgeSearch() {
   const renderTopicSummary = (summaryData: GenerateMedicalTopicSummaryOutput | null) => {
     if (!summaryData) return null;
 
-    const title = `AI Comprehensive Summary: ${summaryData.topic || "Topic"}`;
-    const description = `Key points and detailed overview covering etiology, symptoms, diagnosis, treatment, and prognosis for "${query}".`;
+    const title = `AI Comprehensive Summary: ${summaryData.topic || query || "Topic"}`;
+    const description = `Key points and detailed overview covering etiology, symptoms, diagnosis, treatment, and prognosis for "${summaryData.topic || query}".`;
     const hasDetailedInfo = summaryData.etiology || summaryData.symptoms || summaryData.diagnosis || summaryData.treatment || summaryData.prognosis || summaryData.overallSummary;
 
     return (
@@ -404,7 +409,7 @@ export function MedicalKnowledgeSearch() {
                             <div key={`anomaly-${index}`} className="p-2 border rounded-md bg-secondary/30">
                                 <p className="font-medium text-sm text-foreground">{anomaly.finding}</p>
                                 {anomaly.location && <p className="text-xs text-muted-foreground">Location: {anomaly.location}</p>}
-                                {anomaly.severity && <div className="text-xs text-muted-foreground">Severity: <Badge variant={anomaly.severity === "normal" ? "default" : anomaly.severity === "mild" ? "secondary" : "destructive" }>{anomaly.severity}</Badge></div>}
+                                {anomaly.severity && <p className="text-xs text-muted-foreground">Severity: <Badge variant={anomaly.severity === "normal" ? "default" : anomaly.severity === "mild" ? "secondary" : "destructive"}>{anomaly.severity}</Badge></p>}
                             </div>
                             ))}
                         </div>
@@ -458,8 +463,7 @@ export function MedicalKnowledgeSearch() {
  }; // End of renderDiagnosisResult function
 
 
-
-  return (
+ return (
     <div className="w-full max-w-3xl mx-auto">
       <Card className="shadow-lg">
         <CardHeader>
@@ -497,6 +501,7 @@ export function MedicalKnowledgeSearch() {
                           <SelectItem value="all">All Sources &amp; AI Summary</SelectItem>
                           <SelectItem value="wikipedia">Wikipedia</SelectItem>
                           <SelectItem value="pubmed">PubMed</SelectItem>
+                          <SelectItem value="jmr">Journal of Medical Research (JMR)</SelectItem> {/* Added JMR */}
                           <SelectItem value="medlineplus">MedlinePlus</SelectItem>
                           <SelectItem value="googlescholar">Google Scholar</SelectItem>
                           <SelectItem value="google">Google Search</SelectItem>
@@ -665,5 +670,5 @@ export function MedicalKnowledgeSearch() {
         </CardContent>
       </Card>
     </div>
-  ); // End of return statement
-} // End of MedicalKnowledgeSearch component function
+  );
+}
