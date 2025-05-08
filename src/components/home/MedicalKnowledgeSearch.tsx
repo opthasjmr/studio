@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, type ChangeEvent, useRef } from "react"; // Added useRef
+import { useState, type ChangeEvent, useRef } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -138,27 +138,38 @@ export function MedicalKnowledgeSearch() {
                 body: formData,
             });
 
-            // Check if the response is successful BEFORE trying to parse JSON
-            if (!response.ok) {
-                let errorText = `File analysis failed: ${response.status} ${response.statusText}`;
-                try {
-                    // Read the response body as text to get more details
-                    const responseBody = await response.text();
-                    // Try parsing it as JSON if possible, otherwise use the raw text
-                    try {
-                        const errorData = JSON.parse(responseBody);
-                        errorText = errorData.error || responseBody || errorText;
-                    } catch (jsonErr) {
-                        errorText = responseBody || errorText;
-                    }
-                } catch (readError) {
-                    console.error("Failed to read error response body:", readError);
+            let errorText = null;
+            let responseData;
+            let tempResponseBodyClone = response.clone(); // Clone response
+
+            try {
+                // Attempt to parse JSON first
+                responseData = await response.json();
+                if (!response.ok) {
+                    errorText = responseData.error || `File analysis failed: ${response.status} ${response.statusText}`;
                 }
+            } catch (jsonError) {
+                 // If JSON parsing fails, use the cloned response to read as text
+                try {
+                    const text = await tempResponseBodyClone.text(); // Read text from clone
+                    if (!response.ok) { // Still check original response status
+                        errorText = text || `File analysis failed: ${response.status} ${response.statusText}`;
+                    } else {
+                        errorText = "Received unexpected response format from server.";
+                    }
+                } catch (textError) {
+                    console.error("Failed to read error response body:", textError);
+                    errorText = `File analysis failed: ${response.status} ${response.statusText} (Could not read response)`;
+                }
+            }
+
+
+            if (errorText) {
                 throw new Error(errorText);
             }
 
-            // If response.ok is true, parse JSON
-            const data: { diagnosis_result: any, result_type: 'document_analysis' | 'image_analysis' } = await response.json();
+            // If response.ok is true, and JSON was parsed
+            const data: { diagnosis_result: any, result_type: 'document_analysis' | 'image_analysis' } = responseData;
             setAiDiagnosisResult({ ...data.diagnosis_result, result_type: data.result_type });
 
             // Check if the result is minimal or empty
@@ -175,26 +186,39 @@ export function MedicalKnowledgeSearch() {
                 `/api/medical-search?query=${encodeURIComponent(query)}&source=${source}&summarize=${shouldRequestAISummary}`
             );
 
-            // Check if the response is successful BEFORE trying to parse JSON
-            if (!response.ok) {
-                let errorText = `Search failed: ${response.status} ${response.statusText}`;
-                try {
-                    // Read the response body as text to get more details
-                    const responseBody = await response.text();
-                     try {
-                        const errorData = JSON.parse(responseBody);
-                        errorText = errorData.error || responseBody || errorText;
-                    } catch (jsonErr) {
-                        errorText = responseBody || errorText;
-                    }
-                } catch (readError) {
-                    console.error("Failed to read error response body:", readError);
+            let errorText = null;
+            let responseData;
+            let tempResponseBodyClone = response.clone(); // Clone response
+
+             try {
+                // Attempt to parse JSON first
+                responseData = await response.json();
+                 if (!response.ok) {
+                     errorText = responseData.error || `Search failed: ${response.status} ${response.statusText}`;
                 }
+            } catch (jsonError) {
+                // If JSON parsing fails, read as text from clone
+                try {
+                    const text = await tempResponseBodyClone.text(); // Read text from clone
+                     if (!response.ok) { // Still check original response status
+                        errorText = text || `Search failed: ${response.status} ${response.statusText}`;
+                    } else {
+                        errorText = "Received unexpected response format from server.";
+                    }
+                } catch (textError) {
+                    console.error("Failed to read response body:", textError);
+                    errorText = `Search failed: ${response.status} ${response.statusText} (Could not read response)`;
+                }
+            }
+
+
+            if (errorText) {
                 throw new Error(errorText);
             }
 
-            // If response.ok is true, parse JSON
-            const data: MedicalSearchResponse = await response.json();
+
+            // If response.ok is true, and JSON was parsed
+            const data: MedicalSearchResponse = responseData;
 
             if (data.aiComprehensiveSummary) {
                 setAiComprehensiveSummary(data.aiComprehensiveSummary);
@@ -364,6 +388,7 @@ export function MedicalKnowledgeSearch() {
                 {!isImageAnalysis && documentData?.overallSummary && documentData.keyPointsSummary && ( // Show overall only if keypoints also exist here
                     <div><h4 className="font-semibold text-md text-foreground">Overall Summary:</h4>{renderFormattedText(documentData.overallSummary)}</div>
                 )}
+                {!isImageAnalysis && documentData?.topic && <div><h4 className="font-semibold text-md text-foreground">Identified Topic:</h4>{renderFormattedText(documentData.topic)}</div>}
                 {!isImageAnalysis && documentData?.etiology && <div><h4 className="font-semibold text-md text-foreground">Etiology:</h4>{renderFormattedText(documentData.etiology)}</div>}
                 {!isImageAnalysis && documentData?.symptoms && <div><h4 className="font-semibold text-md text-foreground">Symptoms:</h4>{renderFormattedText(documentData.symptoms)}</div>}
                 {!isImageAnalysis && documentData?.diagnosis && <div><h4 className="font-semibold text-md text-foreground">Diagnosis:</h4>{renderFormattedText(documentData.diagnosis)}</div>}
@@ -379,7 +404,7 @@ export function MedicalKnowledgeSearch() {
                             <div key={`anomaly-${index}`} className="p-2 border rounded-md bg-secondary/30">
                                 <p className="font-medium text-sm text-foreground">{anomaly.finding}</p>
                                 {anomaly.location && <p className="text-xs text-muted-foreground">Location: {anomaly.location}</p>}
-                                {anomaly.severity && <p className="text-xs text-muted-foreground">Severity: <Badge variant={anomaly.severity === "normal" ? "default" : anomaly.severity === "mild" ? "secondary" : "destructive" }>{anomaly.severity}</Badge></p>}
+                                {anomaly.severity && <div className="text-xs text-muted-foreground">Severity: <Badge variant={anomaly.severity === "normal" ? "default" : anomaly.severity === "mild" ? "secondary" : "destructive" }>{anomaly.severity}</Badge></div>}
                             </div>
                             ))}
                         </div>
@@ -425,15 +450,15 @@ export function MedicalKnowledgeSearch() {
                     </div>
                  )}
 
-            </div> // End detailed diagnosis sections
+            </div>
           )}
         </CardContent>
       </Card>
     );
- }; // End of renderDiagnosisResult
+ }; // End of renderDiagnosisResult function
 
 
-  // Component's return statement starts here
+
   return (
     <div className="w-full max-w-3xl mx-auto">
       <Card className="shadow-lg">
@@ -494,12 +519,12 @@ export function MedicalKnowledgeSearch() {
 
                  {/* File Upload Icon Button */}
                   <div className="space-y-1 flex flex-col items-start">
-                     <Label htmlFor="file-upload" className="text-xs font-medium text-muted-foreground">&nbsp;</Label> {/* Spacer label */}
+                     <Label htmlFor="file-upload" className="text-xs font-medium text-muted-foreground">&nbsp;</Label>
                      <Button
                         type="button"
                         variant="outline"
                         size="icon"
-                        onClick={() => fileInputRef.current?.click()} // Trigger hidden input
+                        onClick={() => fileInputRef.current?.click()}
                         disabled={!!query.trim()}
                         className="h-10 w-10"
                         aria-label="Upload file for analysis"
@@ -512,7 +537,7 @@ export function MedicalKnowledgeSearch() {
 
                  {/* Submit Button */}
                  <div className="space-y-1 flex flex-col items-start">
-                     <Label htmlFor="submit-button" className="text-xs font-medium text-muted-foreground">&nbsp;</Label> {/* Spacer label */}
+                     <Label htmlFor="submit-button" className="text-xs font-medium text-muted-foreground">&nbsp;</Label>
                      <Button id="submit-button" type="submit" disabled={isLoading || (!query.trim() && !selectedFile)} className="h-10">
                         {isLoading ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
