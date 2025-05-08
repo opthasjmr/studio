@@ -1,10 +1,11 @@
+
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useState, type ChangeEvent, useRef } from "react"; // Added useRef
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Label } from "@/components/ui/label"; // Import Label
 import {
   Select,
   SelectContent,
@@ -48,6 +49,7 @@ export function MedicalKnowledgeSearch() {
   const [query, setQuery] = useState("");
   const [source, setSource] = useState("all");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null); // Ref for file input
 
   // States for different result types
   const [aiComprehensiveSummary, setAiComprehensiveSummary] = useState<GenerateMedicalTopicSummaryOutput | null>(null);
@@ -71,7 +73,9 @@ export function MedicalKnowledgeSearch() {
       if (file.size > 10 * 1024 * 1024) { // 10MB limit
         setError("File size exceeds 10MB. Please choose a smaller file.");
         setSelectedFile(null);
-        event.target.value = ""; // Reset file input
+        if (fileInputRef.current) {
+            fileInputRef.current.value = ""; // Reset file input
+        }
         return;
       }
        // Basic check for generally supported types
@@ -80,7 +84,9 @@ export function MedicalKnowledgeSearch() {
       if (!allowedTypes.includes(file.type) && !['txt', 'csv'].includes(fileExtension || '')) {
            setError(`Unsupported file type: ${file.type || fileExtension}. Supported: PDF, DOCX, TXT, CSV, Images.`);
            setSelectedFile(null);
-           event.target.value = ""; // Reset file input
+           if (fileInputRef.current) {
+               fileInputRef.current.value = ""; // Reset file input
+           }
            return;
       }
       setSelectedFile(file);
@@ -91,9 +97,26 @@ export function MedicalKnowledgeSearch() {
     }
   };
 
+  const clearSelection = () => {
+      setSelectedFile(null);
+      setQuery("");
+      if (fileInputRef.current) {
+            fileInputRef.current.value = ""; // Reset file input
+      }
+  };
+
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // Prioritize file upload if both are somehow selected/entered
+     const useFile = !!selectedFile;
+     const useQuery = !!query.trim() && !useFile;
+
+    if (!useFile && !useQuery) {
+        setError("Please enter a search term or select a file to analyze.");
+        return;
+    }
 
     setIsLoading(true);
     setError(null);
@@ -105,12 +128,12 @@ export function MedicalKnowledgeSearch() {
     setShowDetailedDiagnosis(false);
 
     try {
-        if (selectedFile) {
+        if (useFile && selectedFile) {
         // Handle file upload for DIAGNOSIS/ANALYSIS
         const formData = new FormData();
         formData.append("file", selectedFile);
 
-        const response = await fetch("/api/diagnosis", {
+        const response = await fetch("/api/diagnosis", { // Use /api/diagnosis for file analysis
             method: "POST",
             body: formData,
         });
@@ -147,7 +170,7 @@ export function MedicalKnowledgeSearch() {
             setError("Received an invalid response from the server after successful request. " + jsonError.message);
         }
 
-        } else if (query.trim()) {
+        } else if (useQuery) {
         // Handle text-based SEARCH
         const shouldRequestAISummary = true;
         const response = await fetch(
@@ -186,8 +209,6 @@ export function MedicalKnowledgeSearch() {
             console.error("Failed to parse JSON response from /api/medical-search:", jsonError);
             setError("Received an invalid response from the server after successful request. " + jsonError.message);
         }
-        } else {
-            setError("Please enter a search term or select a file to analyze.");
         }
     } catch (err: any) {
         setError(err.message || "An unexpected error occurred.");
@@ -429,20 +450,23 @@ export function MedicalKnowledgeSearch() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-             <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
+             <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
+                {/* Search Input */}
                 <div className="space-y-1">
                     <Label htmlFor="search-query" className="text-xs font-medium text-muted-foreground">Search Medical Topic</Label>
                     <Input
                         type="text"
                         id="search-query"
-                        placeholder="e.g., Glaucoma treatment, OCT..."
+                        placeholder="e.g., Glaucoma treatment..."
                         value={query}
-                        onChange={(e) => { setQuery(e.target.value); if (selectedFile) { setSelectedFile(null); const fileInput = document.getElementById("file-upload") as HTMLInputElement; if(fileInput) fileInput.value = ""; } }}
+                        onChange={(e) => { setQuery(e.target.value); setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
                         className="flex-grow h-10"
                         aria-label="Search query"
                         disabled={!!selectedFile}
                     />
                 </div>
+
+                {/* Source Filter */}
                 <div className="space-y-1">
                     <Label htmlFor="source-filter" className="text-xs font-medium text-muted-foreground">Filter Sources</Label>
                     <Select value={source} onValueChange={setSource} disabled={!!selectedFile}>
@@ -450,45 +474,68 @@ export function MedicalKnowledgeSearch() {
                         <SelectValue placeholder="Select Source" />
                         </SelectTrigger>
                         <SelectContent>
-                        <SelectItem value="all">All Sources &amp; AI Summary</SelectItem>
-                        <SelectItem value="wikipedia">Wikipedia</SelectItem>
-                        <SelectItem value="pubmed">PubMed</SelectItem>
-                        <SelectItem value="medlineplus">MedlinePlus</SelectItem>
-                        <SelectItem value="googlescholar">Google Scholar</SelectItem>
-                        <SelectItem value="google">Google Search</SelectItem>
-                        <SelectItem value="university">University Repositories</SelectItem>
-                        <SelectItem value="aocet">AO CET Ophthalmology</SelectItem>
+                          <SelectItem value="all">All Sources &amp; AI Summary</SelectItem>
+                          <SelectItem value="wikipedia">Wikipedia</SelectItem>
+                          <SelectItem value="pubmed">PubMed</SelectItem>
+                          <SelectItem value="medlineplus">MedlinePlus</SelectItem>
+                          <SelectItem value="googlescholar">Google Scholar</SelectItem>
+                          <SelectItem value="google">Google Search</SelectItem>
+                          <SelectItem value="university">University Repositories</SelectItem>
+                          <SelectItem value="aocet">AO CET Ophthalmology</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
-            </div>
 
+                 {/* Hidden File Input */}
+                 <Input
+                    type="file"
+                    id="file-upload"
+                    ref={fileInputRef} // Attach ref
+                    onChange={handleFileChange}
+                    className="hidden" // Hide the default input
+                    accept=".pdf,.docx,.txt,.csv,image/*"
+                    disabled={!!query.trim()}
+                  />
 
-            <div className="text-center my-1 text-sm text-muted-foreground">OR</div>
-
-            {/* File Upload Row */}
-             <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
-                <div className="space-y-1">
-                    <Label htmlFor="file-upload" className="text-xs font-medium text-muted-foreground">Upload Document/Image for Analysis</Label>
-                    <Input
-                        type="file"
-                        id="file-upload"
-                        onChange={handleFileChange}
-                        className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 h-10 pt-2"
-                        accept=".pdf,.docx,.txt,.csv,image/*"
+                 {/* File Upload Icon Button */}
+                  <div className="space-y-1 flex flex-col items-start">
+                     <Label htmlFor="file-upload" className="text-xs font-medium text-muted-foreground">&nbsp;</Label> {/* Spacer label */}
+                     <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => fileInputRef.current?.click()} // Trigger hidden input
                         disabled={!!query.trim()}
-                    />
-                </div>
-                 <Button type="submit" disabled={isLoading || (!query.trim() && !selectedFile)} className="w-full sm:w-auto h-10 self-end">
-                    {isLoading ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                        selectedFile ? <FileUp className="mr-2 h-4 w-4" /> : <Search className="mr-2 h-4 w-4" />
-                    )}
-                    {selectedFile ? "Analyze File" : "Search Topic"}
-                </Button>
+                        className="h-10 w-10"
+                        aria-label="Upload file for analysis"
+                        title="Upload file for analysis"
+                     >
+                        <FileUp className="h-5 w-5" />
+                     </Button>
+                 </div>
+
+
+                 {/* Submit Button */}
+                 <div className="space-y-1 flex flex-col items-start">
+                     <Label htmlFor="submit-button" className="text-xs font-medium text-muted-foreground">&nbsp;</Label> {/* Spacer label */}
+                     <Button id="submit-button" type="submit" disabled={isLoading || (!query.trim() && !selectedFile)} className="h-10">
+                        {isLoading ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            selectedFile ? <FileUp className="mr-2 h-4 w-4" /> : <Search className="mr-2 h-4 w-4" />
+                        )}
+                        {selectedFile ? "Analyze" : "Search"}
+                     </Button>
+                 </div>
             </div>
-             {selectedFile && <p className="text-xs text-muted-foreground text-center pt-1">Selected file: {selectedFile.name} ({ (selectedFile.size / 1024).toFixed(2) } KB). Clear search box to deselect file upload.</p>}
+            
+            {selectedFile && (
+             <div className="text-xs text-muted-foreground text-center pt-1 flex justify-center items-center gap-2">
+                <span>Selected: {selectedFile.name} ({ (selectedFile.size / 1024).toFixed(2) } KB)</span>
+                 <Button variant="link" size="sm" className="p-0 h-auto text-destructive" onClick={clearSelection}>Clear</Button>
+             </div>
+            )}
+
           </form>
 
           {error && !isLoading && (
@@ -598,5 +645,5 @@ export function MedicalKnowledgeSearch() {
         </CardContent>
       </Card>
     </div>
-  );
-}
+  ); // End of return statement
+} // End of MedicalKnowledgeSearch component function
