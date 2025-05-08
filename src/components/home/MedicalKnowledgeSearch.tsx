@@ -1,10 +1,10 @@
-
 "use client";
 
 import { useState, type ChangeEvent } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label"; // Added import for Label
 import {
   Select,
   SelectContent,
@@ -122,9 +122,9 @@ export function MedicalKnowledgeSearch() {
     } else if (query.trim()) {
       // Handle text-based search
       try {
-        const shouldRequestAISummary = source === "all"; // Get comprehensive summary only when 'all' is selected
+        const shouldRequestAISummary = true; // Always request AI summary for text search now
         const response = await fetch(
-          `/api/medical-search?query=${encodeURIComponent(query)}&source=${source}&summarize=${shouldRequestAISummary}` // Pass summarize=true only for 'all'
+          `/api/medical-search?query=${encodeURIComponent(query)}&source=${source}&summarize=${shouldRequestAISummary}`
         );
         if (!response.ok) {
           const errorData = await response.json();
@@ -412,6 +412,3 @@ export function MedicalKnowledgeSearch() {
     </div>
   ); // End of return statement
 } // End of MedicalKnowledgeSearch component function
-
-
-    
