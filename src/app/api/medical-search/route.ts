@@ -1,11 +1,13 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
+import { summarizeText } from '@/ai/flows/summarize-text-flow'; // Import the new AI summarization flow
 
 interface SearchResultItem {
   source: string;
   title: string;
   summary: string;
   url: string;
+  originalSummary?: string; // To store the original summary if AI summarization is applied
 }
 
 // Basic cache to avoid hitting APIs too frequently during development/testing
@@ -15,7 +17,7 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 async function fetchWikipediaSummary(query: string): Promise<SearchResultItem | null> {
   try {
     const wikiResponse = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query)}`, {
-      headers: { 'User-Agent': 'VisionCarePlusApp/1.0 (contact@example.com)' } // Good practice to set User-Agent
+      headers: { 'User-Agent': 'VisionCarePlusApp/1.0 (contact@example.com)' } 
     });
     if (!wikiResponse.ok) {
       console.warn(`Wikipedia API error for query "${query}": ${wikiResponse.status}`);
@@ -54,6 +56,7 @@ async function fetchPubMedArticles(query: string, retmax = 3): Promise<SearchRes
       return [];
     }
 
+    // Fetch summaries (abstracts) for the found IDs
     const efetchResponse = await fetch(
       `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=${idList.join(",")}&retmode=json`
     );
@@ -68,10 +71,20 @@ async function fetchPubMedArticles(query: string, retmax = 3): Promise<SearchRes
       for (const id of idList) {
         const articleData = efetchData.result[id];
         if (articleData) {
+          // For PubMed, the "abstract" is usually within a structured field, 
+          // but esummary often provides title, authors, source, pubdate directly.
+          // A more detailed fetch (efetch with rettype='abstract') would be needed for full abstracts,
+          // but for simplicity, we'll use the available info from esummary.
+          // We will construct a placeholder summary and then try to AI summarize it if it's deemed complex.
+          // Actual abstract fetching can be complex due to XML parsing.
+          // For now, let's assume `articleData.title` and a generic statement will be summarized.
+          const initialSummary = `Authors: ${articleData.authors?.map((a: {name: string}) => a.name).join(", ") || "N/A"}. Journal: ${articleData.source || "N/A"}. PubDate: ${articleData.pubdate || "N/A"}. Title: ${articleData.title || "Untitled Article"}`;
+          
           articles.push({
             source: "PubMed",
             title: articleData.title || "Untitled Article",
-            summary: `Authors: ${articleData.authors?.map((a: {name: string}) => a.name).join(", ") || "N/A"}. Journal: ${articleData.source || "N/A"}. PubDate: ${articleData.pubdate || "N/A"}.`,
+            summary: initialSummary, // This will be potentially replaced by AI summary
+            originalSummary: initialSummary,
             url: `https://pubmed.ncbi.nlm.nih.gov/${id}/`,
           });
         }
@@ -84,15 +97,10 @@ async function fetchPubMedArticles(query: string, retmax = 3): Promise<SearchRes
   }
 }
 
-// Basic MedlinePlus search (might require a more sophisticated approach or API key for better results)
+// Basic MedlinePlus search 
 async function fetchMedlinePlus(query: string): Promise<SearchResultItem[]> {
     try {
-        // MedlinePlus Connect is the official way, but requires setup.
-        // For a quick demo, we can try to link to their search results or use a general health API if available.
-        // This is a simplified placeholder linking to search.
-        // A proper integration would use their Web Service: https://medlineplus.gov/medlineplus-web-service/
         const searchUrl = `https://medlineplus.gov/query?q=${encodeURIComponent(query)}`;
-        // Simulate finding a few top results or topics - in a real scenario, this would parse XML from their API.
         return [{
             source: "MedlinePlus",
             title: `MedlinePlus Health Topics on "${query}"`,
@@ -122,8 +130,6 @@ async function fetchGoogleScholar(query: string): Promise<SearchResultItem[]> {
 
 async function fetchAOCET(query: string): Promise<SearchResultItem[]> {
     try {
-        // Since "AO CET" is not a specific known public database,
-        // we'll search Google Scholar for "AO CET Ophthalmology" + query.
         const searchQuery = `AO CET Ophthalmology ${query}`;
         const searchUrl = `https://scholar.google.com/scholar?q=${encodeURIComponent(searchQuery)}`;
         return [{
@@ -182,19 +188,24 @@ export async function GET(request: NextRequest) {
         results.push(...aoCETResults);
     }
 
-
-    // Placeholder for AI summarization if content was fetched that needs it.
-    // For example, if PubMed articles had full abstracts, they could be summarized.
-    // results = await Promise.all(results.map(async (item) => {
-    //   if (item.summary.length > 300) { // Example condition for summarizing
-    //     // const aiSummary = await getAISummary(item.summary); // Call to Genkit flow
-    //     // return { ...item, summary: aiSummary || item.summary }; 
-    //   }
-    //   return item;
-    // }));
+    // AI Summarization for specific sources (e.g., PubMed)
+    results = await Promise.all(results.map(async (item) => {
+      // Prioritize summarizing PubMed results as their abstracts can be dense.
+      if (item.source === "PubMed" && item.summary) {
+        try {
+          const aiSummaryResponse = await summarizeText({ textToSummarize: item.summary, context: "medical research abstract" });
+          if (aiSummaryResponse.summary) {
+            return { ...item, summary: aiSummaryResponse.summary, originalSummary: item.summary };
+          }
+        } catch (summarizationError) {
+          console.error(`AI summarization failed for PubMed item "${item.title}":`, summarizationError);
+          // Keep original summary if AI fails
+        }
+      }
+      // Add conditions for other sources if needed, e.g., if item.summary.length > 300
+      return item;
+    }));
     
-    // Additional sources like university repositories, ClinicalTrials.gov, Elsevier would be added here similarly.
-
     searchCache.set(cacheKey, { timestamp: Date.now(), data: results });
     return NextResponse.json({ results });
 

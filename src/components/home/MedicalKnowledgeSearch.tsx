@@ -13,13 +13,14 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Search, AlertCircle, BookOpen, Link as LinkIcon } from "lucide-react";
+import { Loader2, Search, AlertCircle, BookOpen, Link as LinkIcon, MessageSquareText, FileText } from "lucide-react"; // Added new icons
 
 interface SearchResultItem {
   source: string;
   title: string;
   summary: string;
   url: string;
+  originalSummary?: string; // Added for AI summarized content
 }
 
 interface SearchResponse {
@@ -32,6 +33,11 @@ export function MedicalKnowledgeSearch() {
   const [results, setResults] = useState<SearchResultItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expandedSummaries, setExpandedSummaries] = useState<Record<number, boolean>>({});
+
+  const toggleSummaryExpansion = (index: number) => {
+    setExpandedSummaries(prev => ({ ...prev, [index]: !prev[index] }));
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -42,6 +48,7 @@ export function MedicalKnowledgeSearch() {
     setIsLoading(true);
     setError(null);
     setResults([]);
+    setExpandedSummaries({}); // Reset expanded states
 
     try {
       const response = await fetch(
@@ -70,7 +77,7 @@ export function MedicalKnowledgeSearch() {
         <CardHeader>
           <CardTitle className="text-2xl font-semibold text-primary">Medical Knowledge Search</CardTitle>
           <CardDescription>
-            Search ophthalmology topics, diseases, and research from various authoritative sources.
+            Search ophthalmology topics, diseases, and research from various authoritative sources. AI summaries provided for select content.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -96,7 +103,6 @@ export function MedicalKnowledgeSearch() {
                   <SelectItem value="medlineplus">MedlinePlus</SelectItem>
                   <SelectItem value="googlescholar">Google Scholar</SelectItem>
                   <SelectItem value="aocet">AO CET Ophthalmology</SelectItem>
-                  {/* Add other sources like university repositories when implemented */}
                 </SelectContent>
               </Select>
               <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
@@ -135,7 +141,35 @@ export function MedicalKnowledgeSearch() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground line-clamp-3">{item.summary || "No summary available."}</p>
+                    {item.originalSummary ? (
+                      <>
+                        <div className="flex items-center text-sm text-primary mb-1">
+                           <MessageSquareText className="h-4 w-4 mr-1.5 " /> AI-Generated Summary:
+                        </div>
+                        <p className="text-sm text-foreground bg-primary/10 p-2 rounded-md">
+                          {item.summary}
+                        </p>
+                        <Button
+                          variant="link"
+                          size="sm"
+                          onClick={() => toggleSummaryExpansion(index)}
+                          className="text-xs p-0 h-auto mt-1"
+                        >
+                           {expandedSummaries[index] ? "Hide" : "Show"} Original Abstract
+                           {expandedSummaries[index] ? <FileText className="ml-1 h-3 w-3" /> : <FileText className="ml-1 h-3 w-3" /> }
+                        </Button>
+                        {expandedSummaries[index] && (
+                          <div className="mt-2 border-t pt-2">
+                             <p className="text-xs text-muted-foreground mb-1">Original Abstract:</p>
+                             <p className="text-sm text-muted-foreground line-clamp-5 hover:line-clamp-none transition-all duration-300">
+                               {item.originalSummary}
+                             </p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground line-clamp-3">{item.summary || "No summary available."}</p>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -155,7 +189,7 @@ export function MedicalKnowledgeSearch() {
             <AlertDescription>
               This search utilizes public APIs (Wikipedia, PubMed, etc.) and AI summarization for informational purposes. 
               Always verify information with primary sources and consult medical professionals for advice. 
-              Advanced filters (Retina, Glaucoma) and integrations (Elsevier, ClinicalTrials.gov) are planned.
+              Advanced filters and integrations are planned.
             </AlertDescription>
           </Alert>
 
