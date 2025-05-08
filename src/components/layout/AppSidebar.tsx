@@ -34,10 +34,13 @@ import {
   LogOut,
   ChevronDown,
   ChevronUp,
-  ScanEye, // Added ScanEye
+  ScanEye, 
+  ClipboardList, // Added ClipboardList
 } from "lucide-react";
 import type React from 'react';
 import { useState } from 'react';
+import { siteConfig } from "@/config/site";
+
 
 interface NavItem {
   href: string;
@@ -47,26 +50,37 @@ interface NavItem {
   children?: NavItem[];
 }
 
-const navItems: NavItem[] = [
-  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", roles: ["admin", "doctor", "receptionist", "patient"] },
-  { href: "/patients", icon: Users, label: "Patients", roles: ["admin", "doctor", "receptionist"] },
-  { 
-    href: "/appointments", 
-    icon: CalendarDays, 
-    label: "Appointments", 
-    roles: ["admin", "doctor", "receptionist", "patient"],
-    children: [
-      { href: "/appointments", icon: CalendarDays, label: "View All", roles: ["admin", "doctor", "receptionist", "patient"] },
-      { href: "/appointments/new", icon: CalendarDays, label: "Schedule New", roles: ["admin", "doctor", "receptionist"] },
-    ]
-  },
-  { href: "/analyze-scan", icon: ScanEye, label: "Analyze Scan", roles: ["admin", "doctor"] }, // Added Analyze Scan
-  { href: "/emr", icon: FileText, label: "EMR", roles: ["admin", "doctor"], },
-  { href: "/billing", icon: DollarSign, label: "Billing", roles: ["admin", "receptionist"], },
-  { href: "/reports", icon: BarChart2, label: "Reports", roles: ["admin", "doctor"], },
-  { href: "/telemedicine", icon: Video, label: "Telemedicine", roles: ["admin", "doctor", "patient"], },
-  { href: "/settings", icon: Settings, label: "Settings", roles: ["admin"], },
-];
+
+const navItems = siteConfig.sidebarNav.map(item => ({
+  ...item,
+  // Map string icon names from config to actual Lucide components
+  icon: (() => {
+    switch (item.icon) {
+      case "LayoutDashboard": return LayoutDashboard;
+      case "Users": return Users;
+      case "CalendarDays": return CalendarDays;
+      case "ScanEye": return ScanEye;
+      case "FileText": return FileText;
+      case "DollarSign": return DollarSign;
+      case "BarChart2": return BarChart2;
+      case "Video": return Video;
+      case "Settings": return Settings;
+      case "ClipboardList": return ClipboardList;
+      default: return LayoutDashboard; // Fallback icon
+    }
+  })(),
+  children: item.children ? item.children.map(child => ({
+    ...child,
+    icon: (() => {
+      switch (child.icon) {
+        case "CalendarDays": return CalendarDays;
+        // Add other child icons if needed
+        default: return CalendarDays;
+      }
+    })()
+  })) : undefined,
+}));
+
 
 export function AppSidebar() {
   const { user, role } = useAuth();

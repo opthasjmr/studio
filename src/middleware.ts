@@ -13,7 +13,8 @@ const protectedRoutes = [
     '/billing', 
     '/reports', 
     '/telemedicine', 
-    '/settings'
+    '/settings',
+    '/reception/dashboard',
 ]; 
 // Add routes that should only be accessible to unauthenticated users
 const authRoutes = ['/login', '/signup', '/forgot-password'];

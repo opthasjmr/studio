@@ -48,6 +48,12 @@ export const siteConfig = {
       roles: ["admin", "doctor", "receptionist", "patient"],
     },
     {
+      title: "Reception Desk",
+      href: "/reception/dashboard",
+      icon: "ClipboardList", 
+      roles: ["receptionist", "admin"],
+    },
+    {
       title: "Patients",
       href: "/patients",
       icon: "Users",
