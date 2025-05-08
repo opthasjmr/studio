@@ -32,7 +32,7 @@ export const AnalyzeDocumentContentOutputSchema = z.object({
 export type AnalyzeDocumentContentOutput = z.infer<typeof AnalyzeDocumentContentOutputSchema>;
 
 export async function analyzeDocumentContent(input: AnalyzeDocumentContentInput): Promise<AnalyzeDocumentContentOutput> {
-  if (!input.textContent && !input.fileDataUri) { // Fixed: Replaced &amp;&amp; with &&
+  if (!input.textContent && !input.fileDataUri) {
     throw new Error("Either textContent or fileDataUri must be provided.");
   }
   return analyzeDocumentContentFlow(input);
@@ -82,3 +82,4 @@ const analyzeDocumentContentFlow = ai.defineFlow(
     return output;
   }
 );
+
