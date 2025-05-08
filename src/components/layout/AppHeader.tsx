@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -64,7 +65,7 @@ export function AppHeader() {
           <Search className="h-5 w-5 text-muted-foreground" />
           <Input 
             type="search" 
-            placeholder="Search patients" 
+            placeholder="Search" 
             className="h-9"
           />
         </div>
@@ -152,3 +153,4 @@ export function AppHeader() {
     </header>
   );
 }
+
