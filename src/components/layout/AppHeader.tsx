@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -19,12 +18,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { User as UserIcon, LogOut, LayoutDashboard, ScanEye, Send, Search, Bell, PanelLeft } from "lucide-react";
 import { SiteLogo } from "@/components/SiteLogo";
-import { useSidebar } from "@/components/ui/sidebar"; // Import useSidebar
+import { useSidebar } from "@/components/ui/sidebar"; 
 
 export function AppHeader() {
   const { user } = useAuth();
   const router = useRouter();
-  const { toggleSidebar, isMobile } = useSidebar(); // Get toggleSidebar and isMobile from context
+  const { toggleSidebar, isMobile, open: sidebarOpen } = useSidebar(); 
 
   const handleSignOut = async () => {
     await signOutUser();
@@ -40,15 +39,24 @@ export function AppHeader() {
     <header className="sticky top-0 z-30 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between space-x-4">
         <div className="flex items-center">
-          {isMobile && ( /* Show sidebar toggle only on mobile */
+          {isMobile && user && ( /* Show sidebar toggle only on mobile and if user is logged in */
             <Button variant="ghost" size="icon" onClick={toggleSidebar} className="mr-2 md:hidden">
               <PanelLeft className="h-6 w-6" />
               <span className="sr-only">Toggle Sidebar</span>
             </Button>
           )}
-          {/* Hide SiteLogo in header if sidebar is expanded on desktop, or always show on mobile */}
-          {/* This logic might need adjustment based on exact sidebar behavior desired */}
-          {(isMobile || !useSidebar().open) && <SiteLogo />}
+          {
+            (() => {
+              if (!user) { // Public page, always show SiteLogo
+                return <SiteLogo />;
+              }
+              // Authenticated page: show if mobile OR if desktop and sidebar is collapsed
+              if (isMobile || !sidebarOpen) {
+                return <SiteLogo />;
+              }
+              return null; // Hide SiteLogo if desktop and sidebar is open
+            })()
+          }
         </div>
         
         {/* Global Search Bar - Visible on larger screens */}

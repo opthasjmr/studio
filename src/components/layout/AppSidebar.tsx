@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -8,8 +7,8 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  // SidebarProvider, // Removed
   SidebarFooter,
-  SidebarProvider,
   SidebarTrigger,
   SidebarMenuSub,
   SidebarMenuSubButton,
@@ -168,8 +167,7 @@ export function AppSidebar() {
 }
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <SidebarProvider defaultOpen={true}> 
+  return ( // SidebarProvider is now in AppProviders
       <div className="flex min-h-screen">
         <AppSidebar />
         <main className="flex-1 flex flex-col">
@@ -178,6 +176,5 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
         </main>
       </div>
-    </SidebarProvider>
   );
 }
