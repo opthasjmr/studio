@@ -16,12 +16,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User as UserIcon, LogOut, LayoutDashboard, ScanEye, Send } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { User as UserIcon, LogOut, LayoutDashboard, ScanEye, Send, Search, Bell, PanelLeft } from "lucide-react";
 import { SiteLogo } from "@/components/SiteLogo";
+import { useSidebar } from "@/components/ui/sidebar"; // Import useSidebar
 
 export function AppHeader() {
   const { user } = useAuth();
   const router = useRouter();
+  const { toggleSidebar, isMobile } = useSidebar(); // Get toggleSidebar and isMobile from context
 
   const handleSignOut = async () => {
     await signOutUser();
@@ -34,35 +37,47 @@ export function AppHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background">
-      <div className="container flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0">
-        <SiteLogo />
-        <nav className="hidden flex-1 items-center justify-center space-x-6 text-sm font-medium md:flex">
-          {siteConfig.mainNav.map((item) => {
-            // Show if auth is not required OR if auth is required and user exists
-            if (!item.authRequired || (item.authRequired && user)) {
-              // Specifically for "Request Demo", only show if user is NOT logged in for main nav
-              if (item.href === "/contact" && user && item.authRequired === false) {
-                return null;
-              }
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="text-foreground/60 transition-colors hover:text-foreground/80"
-                >
-                  {item.title}
-                </Link>
-              );
-            }
-            return null;
-          })}
-        </nav>
-        <div className="flex items-center justify-end space-x-4">
+    <header className="sticky top-0 z-30 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-16 items-center justify-between space-x-4">
+        <div className="flex items-center">
+          {isMobile && ( /* Show sidebar toggle only on mobile */
+            <Button variant="ghost" size="icon" onClick={toggleSidebar} className="mr-2 md:hidden">
+              <PanelLeft className="h-6 w-6" />
+              <span className="sr-only">Toggle Sidebar</span>
+            </Button>
+          )}
+          {/* Hide SiteLogo in header if sidebar is expanded on desktop, or always show on mobile */}
+          {/* This logic might need adjustment based on exact sidebar behavior desired */}
+          {(isMobile || !useSidebar().open) && <SiteLogo />}
+        </div>
+        
+        {/* Global Search Bar - Visible on larger screens */}
+        <div className="hidden md:flex flex-1 max-w-md items-center space-x-2">
+          <Search className="h-5 w-5 text-muted-foreground" />
+          <Input 
+            type="search" 
+            placeholder="Search patients, appointments..." 
+            className="h-9"
+          />
+        </div>
+
+        <div className="flex items-center space-x-2 sm:space-x-4">
+           {/* Notifications Icon - Placeholder */}
+          {user && (
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="h-5 w-5" />
+              <span className="absolute top-1 right-1 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+              </span>
+              <span className="sr-only">Notifications</span>
+            </Button>
+          )}
+
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                   <Avatar className="h-9 w-9">
                     <AvatarImage src={user.photoURL || undefined} alt={user.displayName || user.email || "User"} />
                     <AvatarFallback>{getInitials(user.displayName || user.email)}</AvatarFallback>
@@ -93,11 +108,6 @@ export function AppHeader() {
                   <Send className="mr-2 h-4 w-4" />
                   <span>Request Demo</span>
                 </DropdownMenuItem>
-                {/* Add profile link if needed */}
-                {/* <DropdownMenuItem onClick={() => router.push('/profile')}>
-                  <UserIcon className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
-                </DropdownMenuItem> */}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut}>
                   <LogOut className="mr-2 h-4 w-4" />
@@ -107,6 +117,20 @@ export function AppHeader() {
             </DropdownMenu>
           ) : (
             <>
+             {/* Show main nav links from siteConfig if not using sidebar primarily for these */}
+            <nav className="hidden items-center space-x-6 text-sm font-medium md:flex">
+                {siteConfig.mainNav
+                .filter(item => !item.authRequired) // Show only non-auth links for logged-out users
+                .map((item) => (
+                    <Link
+                    key={item.href}
+                    href={item.href}
+                    className="text-foreground/60 transition-colors hover:text-foreground/80"
+                    >
+                    {item.title}
+                    </Link>
+                ))}
+            </nav>
               <Button variant="ghost" asChild>
                 <Link href="/login">Login</Link>
               </Button>

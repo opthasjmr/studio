@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -100,7 +101,7 @@ export default function NewPatientPage() {
   }
 
   return (
-    <div className="container mx-auto py-10 px-4 max-w-3xl">
+    <div className="container mx-auto py-10 px-4 max-w-3xl"> {/* Ensure consistent padding */}
       <Card className="shadow-xl">
         <CardHeader>
           <div className="flex items-center space-x-3">

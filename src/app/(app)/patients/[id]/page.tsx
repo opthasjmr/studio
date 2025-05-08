@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -123,7 +124,7 @@ export default function PatientDetailPage() {
 
 
   return (
-    <div className="container mx-auto py-10 px-4 max-w-4xl">
+    <div className="container mx-auto py-10 px-4 max-w-4xl"> {/* Ensure consistent padding */}
        <Button onClick={() => router.back()} variant="outline" className="mb-6">
           <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>

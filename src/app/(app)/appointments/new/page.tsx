@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -8,7 +9,7 @@ import { useRouter } from "next/navigation";
 export default function NewAppointmentPage() {
   const router = useRouter();
   return (
-    <div className="container mx-auto py-10 px-4 max-w-2xl">
+    <div className="container mx-auto py-10 px-4 max-w-2xl"> {/* Ensure consistent padding */}
        <Button onClick={() => router.back()} variant="outline" className="mb-6">
           <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>

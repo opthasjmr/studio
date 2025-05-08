@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -164,7 +165,7 @@ export default function EditPatientPage() {
 
 
   return (
-    <div className="container mx-auto py-10 px-4 max-w-3xl">
+    <div className="container mx-auto py-10 px-4 max-w-3xl"> {/* Ensure consistent padding */}
       <Button onClick={() => router.back()} variant="outline" className="mb-6">
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Patient Details
       </Button>

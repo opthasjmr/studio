@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -362,4 +363,5 @@ export {
   ChartLegend,
   ChartLegendContent,
   ChartStyle,
+  RechartsPrimitive, // Exporting RechartsPrimitive
 }

@@ -1,11 +1,17 @@
+
+"use client"; // Add this if using hooks like useAuth directly or for interactions
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AppHeader } from "@/components/layout/AppHeader";
+import { AppHeader } from "@/components/layout/AppHeader"; // Keep for logged-out view
 import Link from "next/link";
 import Image from "next/image";
 import { CheckCircle, Eye, Users, Activity, ShieldCheck } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext"; // Import useAuth to check login state
 
 export default function HomePage() {
+  const { user } = useAuth(); // Check if user is logged in
+
   const features = [
     {
       icon: <Users className="h-8 w-8 text-primary" />,
@@ -31,7 +37,7 @@ export default function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <AppHeader />
+      {!user && <AppHeader />} {/* Conditionally render AppHeader only if user is not logged in */}
       <main className="flex-1">
         {/* Hero Section */}
         <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 bg-secondary">
@@ -52,7 +58,8 @@ export default function HomePage() {
                     <Link href="/signup">Get Started</Link>
                   </Button>
                   <Button size="lg" variant="outline" asChild>
-                    <Link href="/features">Learn More</Link>
+                    {/* Link to a features page or section */}
+                    <Link href="#features">Learn More</Link> 
                   </Button>
                 </div>
               </div>
@@ -69,7 +76,7 @@ export default function HomePage() {
         </section>
 
         {/* Features Section */}
-        <section className="w-full py-12 md:py-24 lg:py-32">
+        <section id="features" className="w-full py-12 md:py-24 lg:py-32"> {/* Added id for scroll linking */}
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
@@ -130,7 +137,7 @@ export default function HomePage() {
                 </li>
               </ul>
               <Button asChild>
-                <Link href="/analyze-scan">Try AI Analysis</Link>
+                <Link href={user ? "/analyze-scan" : "/login?redirect=/analyze-scan"}>Try AI Analysis</Link>
               </Button>
             </div>
             <div className="flex justify-center">

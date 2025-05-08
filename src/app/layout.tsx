@@ -37,8 +37,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      {/* <head /> removed: Next.js automatically handles meta tags from `metadata` object here */}
-      <body className={`${GeistSans.variable} font-sans antialiased`}> {/* Use GeistSans variable for global application */}
+      {/* Next.js automatically handles meta tags from `metadata` object here */}
+      <body className={`${GeistSans.variable} font-sans antialiased`}>
         <AppProviders>
           {children}
           <Toaster />
@@ -47,4 +47,3 @@ export default function RootLayout({
     </html>
   );
 }
-
