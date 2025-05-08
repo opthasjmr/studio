@@ -105,6 +105,39 @@ async function fetchMedlinePlus(query: string): Promise<SearchResultItem[]> {
     }
 }
 
+async function fetchGoogleScholar(query: string): Promise<SearchResultItem[]> {
+    try {
+        const searchUrl = `https://scholar.google.com/scholar?q=${encodeURIComponent(query)}`;
+        return [{
+            source: "Google Scholar",
+            title: `Google Scholar search results for "${query}"`,
+            summary: `Scholarly articles related to "${query}" from Google Scholar.`,
+            url: searchUrl,
+        }];
+    } catch (error) {
+        console.error(`Error creating Google Scholar link for "${query}":`, error);
+        return [];
+    }
+}
+
+async function fetchAOCET(query: string): Promise<SearchResultItem[]> {
+    try {
+        // Since "AO CET" is not a specific known public database,
+        // we'll search Google Scholar for "AO CET Ophthalmology" + query.
+        const searchQuery = `AO CET Ophthalmology ${query}`;
+        const searchUrl = `https://scholar.google.com/scholar?q=${encodeURIComponent(searchQuery)}`;
+        return [{
+            source: "AO CET Ophthalmology (via Google Scholar)",
+            title: `Search results for "AO CET Ophthalmology ${query}"`,
+            summary: `Potentially relevant articles for "AO CET Ophthalmology ${query}" from Google Scholar.`,
+            url: searchUrl,
+        }];
+    } catch (error) {
+        console.error(`Error creating AO CET link for "${query}":`, error);
+        return [];
+    }
+}
+
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -138,6 +171,17 @@ export async function GET(request: NextRequest) {
         const medlineResults = await fetchMedlinePlus(query);
         results.push(...medlineResults);
     }
+
+    if (source === "all" || source === "googlescholar") {
+        const googleScholarResults = await fetchGoogleScholar(query);
+        results.push(...googleScholarResults);
+    }
+
+    if (source === "all" || source === "aocet") {
+        const aoCETResults = await fetchAOCET(query);
+        results.push(...aoCETResults);
+    }
+
 
     // Placeholder for AI summarization if content was fetched that needs it.
     // For example, if PubMed articles had full abstracts, they could be summarized.

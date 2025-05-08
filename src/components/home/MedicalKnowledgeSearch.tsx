@@ -94,6 +94,8 @@ export function MedicalKnowledgeSearch() {
                   <SelectItem value="wikipedia">Wikipedia</SelectItem>
                   <SelectItem value="pubmed">PubMed</SelectItem>
                   <SelectItem value="medlineplus">MedlinePlus</SelectItem>
+                  <SelectItem value="googlescholar">Google Scholar</SelectItem>
+                  <SelectItem value="aocet">AO CET Ophthalmology</SelectItem>
                   {/* Add other sources like university repositories when implemented */}
                 </SelectContent>
               </Select>
