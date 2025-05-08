@@ -1,3 +1,4 @@
+
 export type SiteConfig = typeof siteConfig;
 
 export const siteConfig = {
@@ -11,15 +12,24 @@ export const siteConfig = {
     {
       title: "Analyze Scan",
       href: "/analyze-scan",
-      authRequired: true,
+      authRequired: true, 
+    },
+    {
+      title: "Request Demo",
+      href: "/contact",
+      authRequired: false, // Show if not logged in
     },
     // Add more navigation items here
   ],
-  userNav: [
+  userNav: [ // For logged-in users, might be in a dropdown
     {
       title: "Profile",
       href: "/profile",
     },
+    {
+        title: "Request Demo",
+        href: "/contact",
+    }
   ],
   links: {
     // Add external links if any
