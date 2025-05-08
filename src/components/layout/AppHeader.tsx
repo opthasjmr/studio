@@ -64,7 +64,7 @@ export function AppHeader() {
           <Search className="h-5 w-5 text-muted-foreground" />
           <Input 
             type="search" 
-            placeholder="Search patients, appointments..." 
+            placeholder="Search patients" 
             className="h-9"
           />
         </div>
