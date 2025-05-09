@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { FilePlus2, Users, CalendarDays, BarChart3, User, AlertCircle, Activity, Briefcase, ServerIcon, BarChartBig, LineChart, PieChartIcon, Filter, ShieldAlert, AlertTriangle } from "lucide-react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { QuickStatsCard } from "@/components/dashboard/QuickStatsCard";
 import { UpcomingAppointmentsWidget } from "@/components/dashboard/UpcomingAppointmentsWidget";
 import { RecentActivitiesWidget } from "@/components/dashboard/RecentActivitiesWidget";
@@ -87,16 +86,27 @@ export default function DashboardPage() {
           getTodaysAppointmentsCount(),
           getPendingBillsCount(), // Placeholder
           getCriticalAlertsCount(), // Fetches count based on tags like 'High Risk'
-          getUpcomingAppointments(5),
+          getUpcomingAppointments(10), // Fetch more to allow for client-side filtering for doctors
           getRecentActivities(5),
           getPatientsByCondition(),
         ]);
+
+        let filteredUpcomingAppointments = upcomingAppointments;
+        if (role === 'doctor' && user?.displayName) {
+            filteredUpcomingAppointments = upcomingAppointments.filter(
+                apt => apt.doctorName === user.displayName
+            ).slice(0,5); // Take top 5 after filtering
+        } else {
+            filteredUpcomingAppointments = upcomingAppointments.slice(0,5); // For other roles, take top 5 as before
+        }
+
+
         setDashboardData({
           totalPatients,
           todaysAppointments,
           pendingBills,
           criticalAlerts,
-          upcomingAppointments,
+          upcomingAppointments: filteredUpcomingAppointments,
           recentActivities,
           patientsByCondition,
           highRiskPatients: highRiskPatientsData, // Add fetched high-risk patients
@@ -225,10 +235,10 @@ export default function DashboardPage() {
             {(role === 'admin' || role === 'doctor' || role === 'receptionist') && (
               <QuickStatsCard title="Today's Appointments" value={dashboardData.todaysAppointments} icon={CalendarDays} />
             )}
-            {(role === 'admin' || role === 'doctor') && (
+            {(role === 'admin' || role === 'receptionist') && ( // Doctors typically don't see pending bills on main dashboard
               <QuickStatsCard title="Pending Bills" value={dashboardData.pendingBills} icon={Briefcase} description="Feature in development" />
             )}
-            {(role === 'admin' || role === 'doctor') && ( // For doctors, this could show count of high-risk patients
+            {(role === 'admin' || role === 'doctor') && ( // For doctors, this shows count of high-risk patients
                <QuickStatsCard
                   title={role === 'doctor' ? "High-Risk Patients" : "Critical System Alerts"}
                   value={dashboardData.criticalAlerts} // Use the count from getCriticalAlertsCount
@@ -292,7 +302,8 @@ export default function DashboardPage() {
                <p className="text-muted-foreground">No recent activities.</p>
             )}
 
-            {(role === 'admin' || role === 'doctor') && (
+            {/* Billing Summary only for Admin and Receptionist */}
+            {(role === 'admin' || role === 'receptionist') && (
                  loadingData ? <Skeleton className="h-72" /> :
                  !fetchError ? <BillingSummaryWidget /> : null
             )}
@@ -321,6 +332,19 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                     <p>Review your upcoming schedule, patient alerts, and AI-assisted diagnostic summaries.</p>
+                    {/* Filter doctor specific upcoming appointments for display here */}
+                    {dashboardData?.upcomingAppointments && dashboardData.upcomingAppointments.length > 0 ? (
+                        <div className="mt-4">
+                            <h3 className="font-semibold mb-2">Your Upcoming Appointments:</h3>
+                            <ul className="space-y-2">
+                            {dashboardData.upcomingAppointments.map(apt => (
+                                <li key={apt.id} className="text-sm p-2 bg-secondary/50 rounded-md">{apt.date} at {apt.time} with {apt.patientName}</li>
+                            ))}
+                            </ul>
+                        </div>
+                    ) : (
+                        <p className="text-muted-foreground mt-4">You have no upcoming appointments today based on current filters.</p>
+                    )}
                     <Button asChild className="mt-4">
                         <Link href="/analyze-scan">Access AI Diagnostic Tools</Link>
                     </Button>
