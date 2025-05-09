@@ -1,10 +1,11 @@
-# Netram Shared UI Library
 
-This directory is intended to host shared UI components that can be used across different frontend applications within the Netram monorepo (e.g., `web-client`, `mobile-client` if it uses a compatible framework like React Native Web, or a potential Storybook setup).
+# Vision Care Plus Shared UI Library
+
+This directory is intended to host shared UI components that can be used across different frontend applications within the Vision Care Plus monorepo (e.g., `web-client`, `mobile-client` if it uses a compatible framework like React Native Web, or a potential Storybook setup).
 
 ## Purpose
 
--   **Consistency:** Ensure a consistent look and feel across all Netram applications.
+-   **Consistency:** Ensure a consistent look and feel across all Vision Care Plus applications.
 -   **Reusability:** Avoid code duplication by creating common UI elements once.
 -   **Maintainability:** Centralize UI logic and styling for easier updates and bug fixes.
 
@@ -29,7 +30,7 @@ This directory is intended to host shared UI components that can be used across 
 │   │   ├── Modal/
 │   │   └── ... (other common components)
 │   ├── themes/
-│   │   └── netram-theme.ts (e.g., Tailwind config, Material UI theme overrides)
+│   │   └── visioncareplus-theme.ts (e.g., Tailwind config, Material UI theme overrides)
 │   └── index.ts          # Exports all components
 ├── package.json
 ├── tsconfig.json
@@ -47,7 +48,7 @@ Applications within the monorepo can import components from this shared library:
 
 ```typescript
 // Example in apps/web-client/src/app/some-page.tsx
-import { Button, Card } from '@netram/ui'; // Assuming @netram is the scope for your monorepo packages
+import { Button, Card } from '@visioncareplus/ui'; // Assuming @visioncareplus is the scope for your monorepo packages
 
 function SomePage() {
   return (
@@ -59,4 +60,3 @@ function SomePage() {
 ```
 
 This is a placeholder. The actual implementation will depend on the chosen monorepo tooling (Yarn Workspaces, PNPM Workspaces, Lerna, Nx, Turborepo) and the specific needs of the applications.
-```

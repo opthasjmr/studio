@@ -1,5 +1,5 @@
 
-# Netram Eye Health Platform - Dashboard Wireframes
+# Vision Care Plus Eye Health Platform - Dashboard Wireframes
 
 ## 🔷 1. Admin Dashboard
 
@@ -190,3 +190,4 @@
 ```
 
 This provides a text-based wireframe for each dashboard, outlining the main components and their general placement, similar to how one might start sketching in a tool like Figma.
+

@@ -1,6 +1,7 @@
-# Netram Mobile Client
 
-This directory is a placeholder for the Netram Eye Health Platform mobile application.
+# Vision Care Plus Mobile Client
+
+This directory is a placeholder for the Vision Care Plus Eye Health Platform mobile application.
 
 ## Technology Choice
 
@@ -25,7 +26,6 @@ Consider using:
 2.  Set up the development environment for the chosen framework.
 3.  Initialize the project in this directory.
 4.  Integrate with the backend services (API Gateway, Auth Service, etc.).
-5.  Implement features as per the Netram platform requirements.
+5.  Implement features as per the Vision Care Plus platform requirements.
 
 Refer to the main project README and framework documentation for more details.
-```

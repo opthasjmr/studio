@@ -1,9 +1,10 @@
+
 export type SiteConfig = typeof siteConfig;
 
 export const siteConfig = {
-  name: "Netram Web Client",
+  name: "Vision Care Plus Web Client",
   description:
-    "Web application for the Netram Eye Health Platform.",
+    "Web application for the Vision Care Plus Eye Health Platform.",
   mainNav: [ // Example for header navigation
     {
       title: "Home",
@@ -32,6 +33,7 @@ export const siteConfig = {
   ],
   links: {
     // twitter: "https://twitter.com/example",
-    // github: "https://github.com/example/netram",
+    github: "https://github.com/example/visioncareplus",
   },
 };
+

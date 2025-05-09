@@ -1,3 +1,4 @@
+
 import express, { Request, Response, NextFunction } from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import cors from 'cors';
@@ -56,7 +57,7 @@ services.forEach(service => {
 
 // Root route for the gateway
 app.get('/', (req: Request, res: Response) => {
-  res.json({ message: 'Netram API Gateway is running!' });
+  res.json({ message: 'Vision Care Plus API Gateway is running!' });
 });
 
 // Basic Error Handling Middleware (should be last)
@@ -72,3 +73,4 @@ app.listen(PORT, () => {
   console.log('Configured service routes:');
   services.forEach(s => console.log(`  ${s.route} -> ${s.target}`));
 });
+

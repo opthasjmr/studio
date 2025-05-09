@@ -1,6 +1,7 @@
-# Netram Eye Health Platform - Monorepo Starter Kit
 
-This starter kit provides the basic structure for the Netram Eye Health Platform, following a modular, service-oriented architecture.
+# Vision Care Plus Eye Health Platform - Monorepo Starter Kit
+
+This starter kit provides the basic structure for the Vision Care Plus Eye Health Platform, following a modular, service-oriented architecture.
 
 ## 📂 Project Structure
 
@@ -91,4 +92,3 @@ Refer to the detailed framework documentation for more information on architectu
 ## 📜 License
 
 This project is licensed under the [MIT License](LICENSE.md) (or your chosen license).
-```

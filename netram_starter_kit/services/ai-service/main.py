@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -9,8 +10,8 @@ import os
 dotenv.load_dotenv()
 
 app = FastAPI(
-    title="Netram AI Service",
-    description="Provides AI/ML capabilities for the Netram Eye Health Platform.",
+    title="Vision Care Plus AI Service",
+    description="Provides AI/ML capabilities for the Vision Care Plus Eye Health Platform.",
     version="0.1.0"
 )
 
@@ -69,7 +70,7 @@ class ImageAnalysisResponse(BaseModel):
 
 @app.get("/")
 async def read_root():
-    return {"message": "Netram AI Service is running!"}
+    return {"message": "Vision Care Plus AI Service is running!"}
 
 @app.post("/ai-diagnosis", response_model=DiagnosisResponse)
 async def diagnose_symptoms(request: DiagnosisRequest):
@@ -124,4 +125,3 @@ async def analyze_image(image_file: UploadFile = File(...)):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT_AI_SERVICE", 8000)))
-```

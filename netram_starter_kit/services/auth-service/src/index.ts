@@ -1,3 +1,4 @@
+
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -88,7 +89,7 @@ app.get('/me', authenticateToken, (req: Request, res: Response) => {
 
 // Root route for the service
 app.get('/', (req: Request, res: Response) => {
-  res.json({ message: 'Netram Auth Service is running!' });
+  res.json({ message: 'Vision Care Plus Auth Service is running!' });
 });
 
 // Basic Error Handling
@@ -100,3 +101,4 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 app.listen(PORT, () => {
   console.log(`Auth Service listening on port ${PORT}`);
 });
+

@@ -1,6 +1,7 @@
-# Netram Shared Utilities Library
 
-This directory is intended to host shared utility functions, constants, types, and helper modules that can be used across different applications and services within the Netram monorepo.
+# Vision Care Plus Shared Utilities Library
+
+This directory is intended to host shared utility functions, constants, types, and helper modules that can be used across different applications and services within the Vision Care Plus monorepo.
 
 ## Purpose
 
@@ -46,8 +47,8 @@ Applications and services within the monorepo can import utilities from this sha
 
 ```typescript
 // Example in apps/web-client/src/components/SomeComponent.tsx
-import { formatDate } from '@netram/utils/date-utils'; // Assuming @netram scope
-import type { Patient } from '@netram/utils/types';
+import { formatDate } from '@visioncareplus/utils/date-utils'; // Assuming @visioncareplus scope
+import type { Patient } from '@visioncareplus/utils/types';
 
 function DisplayPatientInfo({ patient }: { patient: Patient }) {
   return (
@@ -58,7 +59,7 @@ function DisplayPatientInfo({ patient }: { patient: Patient }) {
 }
 
 // Example in services/patient-service/src/handlers.ts
-import { PatientSchema } from '@netram/utils/validation-schemas';
+import { PatientSchema } from '@visioncareplus/utils/validation-schemas';
 
 function createPatient(data: unknown) {
   const validatedData = PatientSchema.parse(data);
@@ -67,4 +68,3 @@ function createPatient(data: unknown) {
 ```
 
 This is a placeholder. The actual implementation will depend on the chosen monorepo tooling and the specific needs of the applications and services.
-```

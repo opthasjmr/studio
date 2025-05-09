@@ -1,3 +1,4 @@
+
 // Placeholder for AppHeader component
 // src/components/layout/AppHeader.tsx
 "use client";
@@ -10,7 +11,7 @@ export function AppHeader() {
     <header className="bg-gray-800 text-white p-4">
       <div className="container mx-auto flex justify-between items-center">
         <Link href="/" className="text-xl font-bold">
-          Netram Web
+          Vision Care Plus
         </Link>
         <nav>
           <Link href="/dashboard" className="px-3 hover:text-gray-300">
@@ -25,3 +26,4 @@ export function AppHeader() {
     </header>
   );
 }
+
