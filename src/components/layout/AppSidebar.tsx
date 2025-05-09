@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -36,8 +35,9 @@ import {
   ChevronUp,
   ScanEye,
   ClipboardList,
-  Wand2, // Added Wand2 icon
-  CalendarPlus, // Added CalendarPlus for sub-item
+  Wand2,
+  FlaskConical, // Added FlaskConical icon
+  CalendarPlus,
 } from "lucide-react";
 import type React from 'react';
 import { useState } from 'react';
@@ -68,7 +68,8 @@ const navItems = siteConfig.sidebarNav.map(item => ({
       case "Video": return Video;
       case "Settings": return Settings;
       case "ClipboardList": return ClipboardList;
-      case "Wand2": return Wand2; // Added Wand2 mapping
+      case "Wand2": return Wand2;
+      case "FlaskConical": return FlaskConical; // Added FlaskConical mapping
       default: return LayoutDashboard; // Fallback icon
     }
   })(),
@@ -77,7 +78,7 @@ const navItems = siteConfig.sidebarNav.map(item => ({
     icon: (() => {
       switch (child.icon) {
         case "CalendarDays": return CalendarDays;
-        case "CalendarPlus": return CalendarPlus; // Added CalendarPlus mapping
+        case "CalendarPlus": return CalendarPlus;
         // Add other child icons if needed
         default: return CalendarDays;
       }

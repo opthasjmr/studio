@@ -82,6 +82,12 @@ export const siteConfig = {
       roles: ["admin", "doctor"], // Primarily for doctors and researchers/admins
     },
     {
+      title: "AutoScholar Project", // New Project Outline Page
+      href: "/project-autoscholar",
+      icon: "FlaskConical", // Icon for research project
+      roles: ["admin", "doctor"],
+    },
+    {
       title: "EMR",
       href: "/emr",
       icon: "FileText",
