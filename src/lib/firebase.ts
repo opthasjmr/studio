@@ -4,39 +4,29 @@ import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 
-// Log environment variables during build/server start for debugging (optional, remove in production)
-// console.log("Firebase Config Vars:", {
-//   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? 'Loaded' : 'Missing',
-//   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ? 'Loaded' : 'Missing',
-//   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ? 'Loaded' : 'Missing',
-//   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ? 'Loaded' : 'Missing',
-//   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ? 'Loaded' : 'Missing',
-//   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID ? 'Loaded' : 'Missing',
-// });
-
-
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig: FirebaseOptions = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: "AIzaSyCEm58VW1j7yTk_E1KhzWK2YK_grzzu1bU",
+  authDomain: "netram-vision.firebaseapp.com",
+  projectId: "netram-vision",
+  storageBucket: "netram-vision.firebasestorage.app",
+  messagingSenderId: "690790224302",
+  appId: "1:690790224302:web:2b9c50b056835285b6783f",
+  measurementId: "G-R0VS5205EJ"
 };
 
-// Validate that required environment variables are present
-const requiredEnvVars: (keyof FirebaseOptions)[] = ['apiKey', 'authDomain', 'projectId'];
-const missingVars = requiredEnvVars.filter(key => !firebaseConfig[key]);
+// Validate that required configuration keys are present and not empty
+const requiredConfigKeys: (keyof FirebaseOptions)[] = ['apiKey', 'authDomain', 'projectId'];
+const missingConfigKeys = requiredConfigKeys.filter(key => !firebaseConfig[key]);
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
 let storage: FirebaseStorage | null = null;
 
-if (missingVars.length > 0) {
-  console.error(`Firebase configuration error: Missing required environment variables: ${missingVars.join(', ')}. Please check your .env.local file.`);
-  // Depending on the context, you might throw an error or handle this state in the UI
-  // For now, services will remain null.
+if (missingConfigKeys.length > 0) {
+  console.error(`Firebase configuration error: Missing required configuration values in firebase.ts: ${missingConfigKeys.join(', ')}.`);
+  // Services will remain null. The AuthContext will handle displaying an error.
 } else {
   // Initialize Firebase only if it hasn't been initialized yet
   if (!getApps().length) {
@@ -45,8 +35,6 @@ if (missingVars.length > 0) {
       console.log("Firebase initialized successfully.");
     } catch (error) {
        console.error("Firebase initialization failed:", error);
-       // Handle initialization error, maybe show a message to the user
-       // Setting app to null or a specific error state might be needed depending on how the rest of the app handles this.
        app = null; // Ensure app is null if init fails
     }
   } else {
@@ -64,22 +52,30 @@ if (missingVars.length > 0) {
   }
 }
 
-
 // Check if services initialized correctly before exporting
 if (!auth || !db || !storage) {
-    console.error("Firebase services could not be initialized. Ensure your environment variables are correct and the Firebase project is set up properly.");
-    // You might want to handle this case more gracefully in your application components,
-    // for example, by showing an error message to the user instead of crashing.
+    if (missingConfigKeys.length === 0 && app) { // Only log this specific error if config was present but services still failed
+        console.error("Firebase services (auth, db, storage) could not be initialized properly, even though the Firebase app object was created. Check console for specific Firebase errors.");
+    } else if (missingConfigKeys.length === 0 && !app) {
+        // This case means initializeApp(firebaseConfig) itself failed.
+        console.error("Firebase app initialization failed. Services (auth, db, storage) cannot be initialized.");
+    }
+    // If missingConfigKeys.length > 0, the error is already logged above.
 }
 
-
 export { app, auth, db, storage };
-// IMPORTANT: Ensure you have a .env.local file in your project root with your actual Firebase credentials:
+// IMPORTANT: The Firebase configuration is now hardcoded in this file.
+// For production, it's generally recommended to use environment variables.
+// If you revert to using environment variables (e.g., process.env.NEXT_PUBLIC_FIREBASE_API_KEY),
+// ensure you have a .env.local file in your project root with your actual Firebase credentials.
 /*
-NEXT_PUBLIC_FIREBASE_API_KEY=AIzaxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Example for .env.local if using environment variables:
+NEXT_PUBLIC_FIREBASE_API_KEY=YOUR_API_KEY
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project-id.firebaseapp.com
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project-id.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=1234567890
-NEXT_PUBLIC_FIREBASE_APP_ID=1:1234567890:web:xxxxxxxxxxxxxxxx
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=YOUR_MESSAGING_SENDER_ID
+NEXT_PUBLIC_FIREBASE_APP_ID=YOUR_APP_ID
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=YOUR_MEASUREMENT_ID (optional)
 */
+
