@@ -1,0 +1,35 @@
+{
+  "name": "netram-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monorepo for the Netram Eye Health Platform.",
+  "scripts": {
+    "dev:web": "cd apps/web-client && npm run dev",
+    "build:web": "cd apps/web-client && npm run build",
+    "start:web": "cd apps/web-client && npm run start",
+    "dev:api-gateway": "cd services/api-gateway && npm run dev",
+    "dev:auth-service": "cd services/auth-service && npm run dev",
+    "dev:ai-service": "cd services/ai-service && uvicorn main:app --reload",
+    "lint": "echo \"Linting not yet configured at root level. Lint each package individually.\"",
+    "test": "echo \"Testing not yet configured at root level. Test each package individually.\"",
+    "prepare": "husky install || true"
+  },
+  "keywords": [
+    "eye-health",
+    "healthcare",
+    "platform",
+    "monorepo"
+  ],
+  "author": "Your Name/Organization",
+  "license": "MIT",
+  "devDependencies": {
+    "husky": "^8.0.0",
+    "prettier": "^3.0.0",
+    "eslint": "^8.0.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "shared/*"
+  ]
+}

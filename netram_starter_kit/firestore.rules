@@ -1,0 +1,65 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all reads and writes
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Users collection:
+    // - Authenticated users can read their own profile.
+    // - Users can create their own profile upon sign-up.
+    // - Admins can read/write any user profile (implement admin check via custom claims or roles collection).
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      // Example admin access (requires setting custom claims or a separate admin roles collection)
+      // allow read, write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Patients collection:
+    // - Authenticated users with 'doctor', 'receptionist', or 'admin' roles can read/write.
+    // - Patients can read their own records if linked via userId.
+    match /patients/{patientId} {
+      allow read: if request.auth != null && 
+                     (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['doctor', 'receptionist', 'admin'] ||
+                      resource.data.userId == request.auth.uid);
+      allow write: if request.auth != null && 
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['doctor', 'receptionist', 'admin'];
+      allow create: if request.auth != null &&
+                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['doctor', 'receptionist', 'admin'];
+    }
+
+    // Appointments collection:
+    // - Authenticated users can read appointments they are part of (patient or doctor).
+    // - Doctors, receptionists, admins can create/update appointments.
+    match /appointments/{appointmentId} {
+      allow read: if request.auth != null && 
+                     (resource.data.patientId == request.auth.uid || 
+                      resource.data.doctorId == request.auth.uid || 
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['receptionist', 'admin']);
+      allow write: if request.auth != null && 
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['doctor', 'receptionist', 'admin'];
+    }
+
+    // EMR collection (similar logic to patients, potentially more restrictive writes)
+    match /emr/{emrId} {
+      allow read: if request.auth != null && 
+                     (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['doctor', 'admin'] || 
+                      resource.data.patientId == request.auth.uid); // Patient can read their own EMR
+      allow write: if request.auth != null && 
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'doctor'; // Only doctors can write
+      allow create: if request.auth != null &&
+                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'doctor';
+    }
+    
+    // Add rules for other collections (billing, reports, etc.) following similar role-based access patterns.
+
+    // Example for a generic 'admin only' collection
+    // match /adminOnlyData/{docId} {
+    //   allow read, write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    // }
+  }
+}

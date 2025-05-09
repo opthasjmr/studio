@@ -1,0 +1,38 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Default deny all reads and writes
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // Allow authenticated users to upload to a user-specific path
+    // e.g., users/{userId}/profile.jpg or patients/{patientId}/documents/consent.pdf
+    match /users/{userId}/{fileName} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /patients/{patientId}/documents/{fileName} {
+      // Allow doctors, admins, or the patient themselves (if patientId matches their linked record)
+      // to read/write patient documents.
+      // This requires checking Firestore for roles or patient linkage.
+      allow read: if request.auth != null; // Simplified for now, add Firestore checks
+      allow write: if request.auth != null; // Simplified for now, add Firestore checks
+    }
+
+    // Allow public read for general assets like logos, if stored here
+    // match /public/{fileName} {
+    //  allow read: if true;
+    // }
+
+    // Allow authorized users (doctors/admins) to upload diagnostic images
+    match /diagnostic_images/{patientId}/{imageId} {
+      // Example: only allow users with 'doctor' or 'admin' role to upload/read
+      // This would require checking user roles from Firestore, e.g., by calling a function
+      // or checking custom claims.
+      allow read, write: if request.auth != null; // Simplified for example
+    }
+  }
+}

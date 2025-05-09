@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+pydantic
+python-dotenv
+# For specific AI tasks:
+# openai # For GPT models
+# google-generativeai # For Gemini models
+# tensorflow # Or tensorflow-lite for edge devices
+# torch torchvision torchaudio # For PyTorch models
+# Pillow # For image processing
+# PyPDF2 # For PDF text extraction
+# python-docx # For DOCX text extraction
+# scikit-learn # For general ML tasks
+# langchaing # If building RAG pipelines
+```
