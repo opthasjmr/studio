@@ -5,6 +5,7 @@ import { GeistSans } from 'geist/font/sans';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import AppProviders from '@/components/AppProviders';
+import type { Viewport } from 'next';
 
 export const metadata: Metadata = {
   title: 'Vision Care Plus',
@@ -28,6 +29,13 @@ export const metadata: Metadata = {
     ],
     // shortcut: '/favicon.ico', // Example: if you have a favicon
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#008080' }, // Primary Teal for light mode
+    { media: '(prefers-color-scheme: dark)', color: '#009999' },  // Adjusted Teal for dark mode
+  ],
 };
 
 export default function RootLayout({

@@ -73,6 +73,7 @@ export default function HomePage() {
                 width={600}
                 height={400}
                 className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last lg:aspect-square shadow-lg"
+                priority // Moved priority prop inside the Image tag
               />
             </div>
           </div>
