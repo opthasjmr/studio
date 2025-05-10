@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -7,7 +8,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  // SidebarProvider, // Removed
   SidebarFooter,
   SidebarTrigger,
   SidebarMenuSub,
@@ -16,7 +16,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { SiteLogo } from "@/components/SiteLogo";
-import { Button } from "@/components/ui/button";
+// import { Button } from "@/components/ui/button"; // Not used directly here anymore
 import { useAuth } from "@/contexts/AuthContext";
 import { signOutUser } from "@/lib/auth-actions";
 import { useRouter, usePathname } from "next/navigation";
@@ -36,13 +36,21 @@ import {
   ScanEye,
   ClipboardList,
   Wand2,
-  FlaskConical, // Added FlaskConical icon
+  FlaskConical,
   CalendarPlus,
 } from "lucide-react";
 import type React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { siteConfig } from "@/config/site";
 
+
+interface NavItemConfig {
+  title: string;
+  href: string;
+  icon: string; // Icon name as string from config
+  roles: string[];
+  children?: NavItemConfig[];
+}
 
 interface NavItem {
   href: string;
@@ -52,37 +60,35 @@ interface NavItem {
   children?: NavItem[];
 }
 
+const mapIconNameToComponent = (iconName: string): React.ElementType => {
+  switch (iconName) {
+    case "LayoutDashboard": return LayoutDashboard;
+    case "Users": return Users;
+    case "CalendarDays": return CalendarDays;
+    case "ScanEye": return ScanEye;
+    case "FileText": return FileText;
+    case "DollarSign": return DollarSign;
+    case "BarChart2": return BarChart2;
+    case "Video": return Video;
+    case "Settings": return Settings;
+    case "ClipboardList": return ClipboardList;
+    case "Wand2": return Wand2;
+    case "FlaskConical": return FlaskConical;
+    case "CalendarPlus": return CalendarPlus;
+    default: return LayoutDashboard; // Fallback icon
+  }
+};
 
-const navItems = siteConfig.sidebarNav.map(item => ({
-  ...item,
-  // Map string icon names from config to actual Lucide components
-  icon: (() => {
-    switch (item.icon) {
-      case "LayoutDashboard": return LayoutDashboard;
-      case "Users": return Users;
-      case "CalendarDays": return CalendarDays;
-      case "ScanEye": return ScanEye;
-      case "FileText": return FileText;
-      case "DollarSign": return DollarSign;
-      case "BarChart2": return BarChart2;
-      case "Video": return Video;
-      case "Settings": return Settings;
-      case "ClipboardList": return ClipboardList;
-      case "Wand2": return Wand2;
-      case "FlaskConical": return FlaskConical; // Added FlaskConical mapping
-      default: return LayoutDashboard; // Fallback icon
-    }
-  })(),
+const navItems: NavItem[] = siteConfig.sidebarNav.map((item: NavItemConfig) => ({
+  href: item.href,
+  icon: mapIconNameToComponent(item.icon),
+  label: item.title,
+  roles: item.roles,
   children: item.children ? item.children.map(child => ({
-    ...child,
-    icon: (() => {
-      switch (child.icon) {
-        case "CalendarDays": return CalendarDays;
-        case "CalendarPlus": return CalendarPlus;
-        // Add other child icons if needed
-        default: return CalendarDays;
-      }
-    })()
+    href: child.href,
+    icon: mapIconNameToComponent(child.icon),
+    label: child.title,
+    roles: child.roles,
   })) : undefined,
 }));
 
@@ -91,18 +97,26 @@ export function AppSidebar() {
   const { user, role } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const { toggleSidebar, state, setOpenMobile } = useSidebar();
+  const { state, setOpenMobile } = useSidebar(); // Removed toggleSidebar, used by Header
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
 
   const handleSignOut = async () => {
     await signOutUser();
-    if(setOpenMobile) setOpenMobile(false);
+    if (setOpenMobile) setOpenMobile(false);
     router.push("/login");
   };
 
   const toggleSubmenu = (label: string) => {
     setOpenSubmenus(prev => ({ ...prev, [label]: !prev[label] }));
   };
+  
+  // Close submenu when sidebar collapses
+  useEffect(() => {
+    if (state === "collapsed") {
+      setOpenSubmenus({});
+    }
+  }, [state]);
+
 
   if (!user) return null;
 
@@ -112,7 +126,8 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" variant="sidebar" side="left">
       <SidebarHeader className="items-center">
         {state === "expanded" && <SiteLogo />}
-        <SidebarTrigger className="ml-auto md:hidden" />
+        {/* SidebarTrigger is for desktop, mobile toggle is in AppHeader */}
+        <SidebarTrigger className="ml-auto hidden md:flex" /> 
       </SidebarHeader>
       <SidebarContent className="p-2">
         <SidebarMenu>
@@ -123,11 +138,11 @@ export function AppSidebar() {
                   if (item.children) {
                     toggleSubmenu(item.label);
                   } else {
-                     if(setOpenMobile) setOpenMobile(false);
+                    if (setOpenMobile) setOpenMobile(false);
                     router.push(item.href);
                   }
                 }}
-                isActive={!item.children && pathname.startsWith(item.href)}
+                isActive={!item.children && pathname === item.href} // Exact match for parent items
                 tooltip={item.label}
                 className="justify-start"
               >
@@ -140,13 +155,14 @@ export function AppSidebar() {
                   {item.children.filter(child => role && child.roles.includes(role)).map(subItem => (
                     <SidebarMenuSubItem key={subItem.label}>
                       <SidebarMenuSubButton
-                        asChild
-                        isActive={pathname === subItem.href}
+                        asChild // Use asChild to make the whole button a Link
+                        isActive={pathname.startsWith(subItem.href)} // Use startsWith for sub-items
                         onClick={() => {
-                           if(setOpenMobile) setOpenMobile(false);
+                           if (setOpenMobile) setOpenMobile(false);
                         }}
                        >
                         <Link href={subItem.href}>
+                          {/* <subItem.icon className="mr-2 h-4 w-4" /> Optional: icon for sub-item */}
                           {subItem.label}
                         </Link>
                       </SidebarMenuSubButton>
@@ -173,11 +189,12 @@ export function AppSidebar() {
 }
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  return ( // SidebarProvider is now in AppProviders
-      <div className="flex min-h-screen">
+  return (
+      <div className="flex min-h-screen bg-muted/40"> {/* Added background color */}
         <AppSidebar />
-        <main className="flex-1 flex flex-col">
-            <div className="flex-1 overflow-y-auto">
+        <main className="flex-1 flex flex-col overflow-hidden"> {/* Prevent double scrollbars potentially */}
+            {/* Content area will scroll if it overflows */}
+            <div className="flex-1 overflow-y-auto"> 
                  {children}
             </div>
         </main>

@@ -10,11 +10,12 @@ export default function AppWithSidebarLayout({
 }) {
   return (
     <DashboardLayout>
+        {/* AppHeader is now part of the main scrollable content area if DashboardLayout doesn't fix it */}
         <AppHeader /> 
-        {/* AppHeader can be part of the main content area now, or DashboardLayout can be modified to include it within its structure if fixed positioning is needed above sidebar */}
-        <div className="flex-1 p-0"> {/* Ensure main content takes remaining space and remove default padding if page itself handles it */}
+        <div className="flex-1 p-0 md:p-6 lg:p-8 bg-muted/40"> {/* Add padding for content area, remove for full-width pages */}
          {children}
         </div>
     </DashboardLayout>
   );
 }
+

@@ -17,30 +17,53 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { User as UserIcon, LogOut, LayoutDashboard, ScanEye, Send, Search, Bell, PanelLeft } from "lucide-react";
+import { User as UserIcon, LogOut, LayoutDashboard, ScanEye, Send, Search, Bell, PanelLeft, Settings, Users, CalendarDays, FileText, DollarSign, BarChart2, Video, Wand2, FlaskConical, SkipForward, ClipboardList } from "lucide-react";
 import { SiteLogo } from "@/components/SiteLogo";
 import { useSidebar } from "@/components/ui/sidebar"; 
 
 export function AppHeader() {
-  const { user } = useAuth();
+  const { user, role } = useAuth(); // Added role from useAuth
   const router = useRouter();
-  const { toggleSidebar, isMobile, open: sidebarOpen } = useSidebar(); 
+  const { toggleSidebar, isMobile, open: sidebarOpen, setOpenMobile } = useSidebar(); 
 
   const handleSignOut = async () => {
     await signOutUser();
+    if(setOpenMobile) setOpenMobile(false); // Close mobile sidebar on logout
     router.push("/login");
   };
 
   const getInitials = (name?: string | null) => {
-    if (!name) return "NV";
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+    if (!name) return "U"; // Default to "U" for User
+    const nameParts = name.split(' ').filter(part => part.length > 0);
+    if (nameParts.length > 1) {
+      return nameParts[0][0] + nameParts[nameParts.length - 1][0];
+    } else if (nameParts.length === 1 && nameParts[0].length > 1) {
+      return nameParts[0].substring(0,2);
+    } else if (nameParts.length === 1) {
+      return nameParts[0][0];
+    }
+    return "U";
   };
+
+  const userSpecificNavItems = [
+    { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["admin", "doctor", "receptionist", "patient"] },
+    { title: "Profile", href: user ? `/patients/${user.uid}` : '/profile', icon: UserIcon, roles: ["patient"] }, // Patient profile link
+    { title: "My Appointments", href: "/appointments", icon: CalendarDays, roles: ["patient"] },
+    { title: "My Records", href: "/emr", icon: FileText, roles: ["patient"] }, // Assuming EMR is where records are
+    { title: "Settings", href: "/settings", icon: Settings, roles: ["admin", "doctor", "patient"] }, // Settings might be for all
+  ].filter(item => role && item.roles.includes(role));
+
+
+  const handleSkipLogin = () => {
+    router.push("/");
+  };
+
 
   return (
     <header className="sticky top-0 z-30 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between space-x-4">
+      <div className="container mx-auto flex h-16 items-center justify-between space-x-4">
         <div className="flex items-center">
-          {isMobile && user && ( /* Show sidebar toggle only on mobile and if user is logged in */
+          {isMobile && user && (
             <Button variant="ghost" size="icon" onClick={toggleSidebar} className="mr-2 md:hidden">
               <PanelLeft className="h-6 w-6" />
               <span className="sr-only">Toggle Sidebar</span>
@@ -48,37 +71,37 @@ export function AppHeader() {
           )}
           {
             (() => {
-              if (!user) { // Public page, always show SiteLogo
+              if (!user) {
                 return <SiteLogo />;
               }
-              // Authenticated page: show if mobile OR if desktop and sidebar is collapsed
               if (isMobile || !sidebarOpen) {
                 return <SiteLogo />;
               }
-              return null; // Hide SiteLogo if desktop and sidebar is open
+              return null;
             })()
           }
         </div>
         
-        {/* Global Search Bar - Visible on larger screens */}
-        <div className="hidden md:flex flex-1 max-w-md items-center space-x-2">
-          <Search className="h-5 w-5 text-muted-foreground" />
-          <Input 
-            type="search" 
-            placeholder="Search" 
-            className="h-9"
-          />
-        </div>
+        {user && (role === 'admin' || role === 'doctor' || role === 'receptionist') && (
+            <div className="hidden md:flex flex-1 max-w-md items-center space-x-2">
+            <Search className="h-5 w-5 text-muted-foreground" />
+            <Input 
+                type="search" 
+                placeholder="Search patients, appointments..." 
+                className="h-9"
+                // Add functionality for search here
+            />
+            </div>
+        )}
 
         <div className="flex items-center space-x-2 sm:space-x-4">
-           {/* Notifications Icon - Placeholder */}
           {user && (
-            <Button variant="ghost" size="icon" className="relative">
+            <Button variant="ghost" size="icon" className="relative" title="Notifications">
               <Bell className="h-5 w-5" />
-              <span className="absolute top-1 right-1 flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-              </span>
+              {/* Example notification badge */}
+              {/* <span className="absolute top-1 right-1 flex h-2.5 w-2.5 rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+              </span> */}
               <span className="sr-only">Notifications</span>
             </Button>
           )}
@@ -97,22 +120,22 @@ export function AppHeader() {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">
-                      {user.displayName || user.email}
+                      {user.displayName || "User"}
                     </p>
                     <p className="text-xs leading-none text-muted-foreground">
                       {user.email}
                     </p>
+                    {role && <p className="text-xs leading-none text-primary capitalize pt-1">{role}</p>}
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push('/dashboard')}>
-                  <LayoutDashboard className="mr-2 h-4 w-4" />
-                  <span>Dashboard</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/analyze-scan')}>
-                  <ScanEye className="mr-2 h-4 w-4" />
-                  <span>Analyze Scan</span>
-                </DropdownMenuItem>
+                {userSpecificNavItems.map(item => (
+                     <DropdownMenuItem key={item.href} onClick={() => router.push(item.href)}>
+                        <item.icon className="mr-2 h-4 w-4" />
+                        <span>{item.title}</span>
+                    </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
                  <DropdownMenuItem onClick={() => router.push('/contact')}>
                   <Send className="mr-2 h-4 w-4" />
                   <span>Request Demo</span>
@@ -126,26 +149,27 @@ export function AppHeader() {
             </DropdownMenu>
           ) : (
             <>
-             {/* Show main nav links from siteConfig if not using sidebar primarily for these */}
-            <nav className="hidden items-center space-x-6 text-sm font-medium md:flex">
+            <nav className="hidden items-center space-x-1 md:flex">
                 {siteConfig.mainNav
-                .filter(item => !item.authRequired) // Show only non-auth links for logged-out users
+                .filter(item => !item.authRequired)
                 .map((item) => (
-                    <Link
-                    key={item.href}
-                    href={item.href}
-                    className="text-foreground/60 transition-colors hover:text-foreground/80"
-                    >
-                    {item.title}
-                    </Link>
+                    <Button variant="ghost" asChild key={item.href}>
+                        <Link href={item.href} className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+                            {item.title}
+                        </Link>
+                    </Button>
                 ))}
             </nav>
-              <Button variant="ghost" asChild>
+              <Button variant="outline" size="sm" asChild>
                 <Link href="/login">Login</Link>
               </Button>
-              <Button asChild>
+              <Button size="sm" asChild>
                 <Link href="/signup">Sign Up</Link>
               </Button>
+               <Button variant="ghost" size="sm" onClick={handleSkipLogin} className="text-sm text-muted-foreground hover:text-primary">
+                <SkipForward className="mr-1 h-4 w-4" />
+                Skip
+            </Button>
             </>
           )}
         </div>
@@ -153,4 +177,3 @@ export function AppHeader() {
     </header>
   );
 }
-
