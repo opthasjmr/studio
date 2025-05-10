@@ -19,57 +19,86 @@ import {
   getTotalPatientsCount,
   getTodaysAppointmentsCount,
   getPendingBillsCount,
-  getCriticalAlertsCount, // This can be adapted for high-risk patients
+  getCriticalAlertsCount, 
   getUpcomingAppointments,
   getRecentActivities,
   getPatientsByCondition,
-  // getHighRiskPatients, // Placeholder function if we decide to implement
 } from "@/lib/dashboard-data";
 import type { ChartConfig } from "@/components/ui/chart";
-import { HighRiskPatientsWidget } from "@/components/dashboard/HighRiskPatientsWidget"; // New Widget
-import { db } from "@/lib/firebase"; // Import db to check availability
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"; // Import Alert components
+import { HighRiskPatientsWidget } from "@/components/dashboard/HighRiskPatientsWidget"; 
+import { db } from "@/lib/firebase"; 
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"; 
+
+// Patient Specific Widgets
+import { PatientUpcomingAppointmentsWidget } from "@/components/dashboard/patient/PatientUpcomingAppointmentsWidget";
+import { PatientPrescriptionsWidget } from "@/components/dashboard/patient/PatientPrescriptionsWidget";
+import { PatientUploadDocsWidget } from "@/components/dashboard/patient/PatientUploadDocsWidget";
+import { PatientVisitHistoryWidget } from "@/components/dashboard/patient/PatientVisitHistoryWidget";
+import { PatientBookAppointmentWidget } from "@/components/dashboard/patient/PatientBookAppointmentWidget";
+import { PatientTeleconsultWidget } from "@/components/dashboard/patient/PatientTeleconsultWidget";
+import { PatientMessagesWidget } from "@/components/dashboard/patient/PatientMessagesWidget";
+import { PatientReportsWidget } from "@/components/dashboard/patient/PatientReportsWidget";
+import { PatientBillingHistoryWidget } from "@/components/dashboard/patient/PatientBillingHistoryWidget";
 
 
 interface DashboardData {
   totalPatients: number;
   todaysAppointments: number;
   pendingBills: number;
-  criticalAlerts: number; // Can be used for high-risk patient count
+  criticalAlerts: number; 
   upcomingAppointments: Appointment[];
   recentActivities: RecentActivity[];
   patientsByCondition: PatientsByConditionData[];
-  highRiskPatients: Patient[]; // Added for new widget
+  highRiskPatients: Patient[]; 
 }
 
 export default function DashboardPage() {
   const { user, role } = useAuth();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loadingData, setLoadingData] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null); // State for fetch errors
-  const isDbAvailable = !!db; // Check if db is initialized
+  const [fetchError, setFetchError] = useState<string | null>(null); 
+  const isDbAvailable = !!db; 
 
   useEffect(() => {
     async function fetchData() {
       if (!user) return;
 
       setLoadingData(true);
-      setFetchError(null); // Reset error on new fetch
+      setFetchError(null); 
 
-      // Check if db service is available before fetching
        if (!isDbAvailable) {
           setFetchError("Database service is unavailable. Cannot load dashboard data.");
           setLoadingData(false);
           return;
        }
 
+      // Skip fetching admin/doctor/receptionist data if user is a patient
+      if (role === 'patient') {
+        // For patients, we might fetch specific patient-related data for their widgets
+        // For now, we'll just set dashboardData to an empty-like state or fetch patient-specific data
+        try {
+             const upcomingAppointments = await getUpcomingAppointments(5, user.uid); // Pass patient UID
+            setDashboardData({
+                totalPatients: 0, // Not relevant for patient
+                todaysAppointments: 0, // Not relevant for patient
+                pendingBills: 0, // Will be part of PatientBillingHistoryWidget
+                criticalAlerts: 0, // Will be part of Patient alerts
+                upcomingAppointments: upcomingAppointments, // Patient's own appointments
+                recentActivities: [], // Patient specific activities if any
+                patientsByCondition: [], // Not relevant for patient
+                highRiskPatients: [], // Not relevant for patient
+            });
+        } catch (error: any) {
+            console.error("Failed to load patient dashboard data", error);
+            setFetchError(`Failed to load patient dashboard data: ${error.message}`);
+        }
+        setLoadingData(false);
+        return;
+      }
+
+
       try {
-        // Simulate fetching high-risk patients for now
-        // In a real scenario, fetch this from Firestore based on tags or criteria
         const highRiskPatientsData: Patient[] = role === 'doctor' || role === 'admin' ? [
-            // Example mock data (replace with actual fetch logic based on 'tags' field)
-            // { id: "p001", name: "John Doe (High IOP)", dob: "1960-01-01", tags: ["Glaucoma Suspect"], createdAt: new Date() },
-            // { id: "p002", name: "Jane Smith (DR Stage II)", dob: "1975-05-15", tags: ["Diabetic Retinopathy"], createdAt: new Date() },
         ] : [];
 
 
@@ -77,16 +106,16 @@ export default function DashboardPage() {
           totalPatients,
           todaysAppointments,
           pendingBills,
-          criticalAlerts, // Represents count of patients with critical tags
+          criticalAlerts, 
           upcomingAppointments,
           recentActivities,
           patientsByCondition,
         ] = await Promise.all([
           getTotalPatientsCount(),
           getTodaysAppointmentsCount(),
-          getPendingBillsCount(), // Placeholder
-          getCriticalAlertsCount(), // Fetches count based on tags like 'High Risk'
-          getUpcomingAppointments(10), // Fetch more to allow for client-side filtering for doctors
+          getPendingBillsCount(), 
+          getCriticalAlertsCount(), 
+          getUpcomingAppointments(10), 
           getRecentActivities(5),
           getPatientsByCondition(),
         ]);
@@ -95,9 +124,9 @@ export default function DashboardPage() {
         if (role === 'doctor' && user?.displayName) {
             filteredUpcomingAppointments = upcomingAppointments.filter(
                 apt => apt.doctorName === user.displayName
-            ).slice(0,5); // Take top 5 after filtering
+            ).slice(0,5); 
         } else {
-            filteredUpcomingAppointments = upcomingAppointments.slice(0,5); // For other roles, take top 5 as before
+            filteredUpcomingAppointments = upcomingAppointments.slice(0,5); 
         }
 
 
@@ -109,7 +138,7 @@ export default function DashboardPage() {
           upcomingAppointments: filteredUpcomingAppointments,
           recentActivities,
           patientsByCondition,
-          highRiskPatients: highRiskPatientsData, // Add fetched high-risk patients
+          highRiskPatients: highRiskPatientsData, 
         });
       } catch (error: any) {
         console.error("Failed to load dashboard data", error);
@@ -119,14 +148,12 @@ export default function DashboardPage() {
       }
     }
     fetchData();
-  }, [user, role, isDbAvailable]); // Add isDbAvailable to dependencies
+  }, [user, role, isDbAvailable]); 
 
 
   if (!user) {
-    // Auth context might still be loading the user or user is not logged in
     return (
       <div className="container mx-auto py-8 flex justify-center">
-         {/* Optionally show a loader or message */}
          <Skeleton className="h-10 w-1/2" />
       </div>
     );
@@ -157,11 +184,9 @@ export default function DashboardPage() {
 
   const availableActions = quickActions.filter(action => role && action.roles.includes(role));
 
-  // Derive chart config safely, handling potentially null dashboardData or empty array
    const patientsByConditionChartConfig = React.useMemo(() => {
     const config: ChartConfig = { count: { label: "Patients" } };
     dashboardData?.patientsByCondition?.forEach((cur, index) => {
-      // Generate distinct colors, ensure cur.condition is a valid string key
       if (typeof cur.condition === 'string' && cur.condition.trim()) {
          config[cur.condition] = { label: cur.condition, color: `hsl(var(--chart-${(index % 5) + 1}))` };
       }
@@ -169,10 +194,9 @@ export default function DashboardPage() {
     return config;
   }, [dashboardData?.patientsByCondition]);
 
-  // Derive chart data safely
   const patientsByConditionChartData = React.useMemo(() =>
     dashboardData?.patientsByCondition
-        ?.filter(d => typeof d.condition === 'string' && typeof d.count === 'number') // Ensure data is valid
+        ?.filter(d => typeof d.condition === 'string' && typeof d.count === 'number') 
         .map(d => ({ name: d.condition, count: d.count })) || [],
    [dashboardData?.patientsByCondition]);
 
@@ -186,7 +210,8 @@ export default function DashboardPage() {
         </CardHeader>
       </Card>
 
-      {availableActions.length > 0 && (
+      {/* Render Quick Actions only if not a patient and actions are available */}
+      {role !== 'patient' && availableActions.length > 0 && (
         <div>
             <h2 className="text-2xl font-semibold text-foreground mb-4">Quick Actions</h2>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -200,7 +225,6 @@ export default function DashboardPage() {
                     <p className="text-xs text-muted-foreground mb-4">
                         Quick access to {action.title.toLowerCase()}.
                     </p>
-                    {/* Disable button if DB is unavailable and action likely needs it */}
                     <Button asChild className="w-full" disabled={!isDbAvailable && (action.href.includes('patients') || action.href.includes('appointments'))}>
                         <Link href={action.href}>Go to {action.title}</Link>
                     </Button>
@@ -211,7 +235,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Display Error if fetching failed */}
         {fetchError && !loadingData && (
             <Alert variant="destructive" className="mt-6">
                 <AlertTriangle className="h-4 w-4" />
@@ -220,162 +243,133 @@ export default function DashboardPage() {
             </Alert>
         )}
 
-      <div>
-        <h2 className="text-2xl font-semibold text-foreground mb-6 mt-10">Overview</h2>
-
-        {loadingData ? (
+      {role !== 'patient' && ( // Admin, Doctor, Receptionist View
+        <div>
+          <h2 className="text-2xl font-semibold text-foreground mb-6 mt-10">Overview</h2>
+          {loadingData ? (
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+                  {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-32" />)}
+              </div>
+          ) : dashboardData && !fetchError ? ( 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-32" />)}
-            </div>
-        ) : dashboardData && !fetchError ? ( // Show stats only if data loaded and no error
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-            {(role === 'admin' || role === 'doctor' || role === 'receptionist') && (
-              <QuickStatsCard title="Total Patients" value={dashboardData.totalPatients} icon={Users} />
-            )}
-            {(role === 'admin' || role === 'doctor' || role === 'receptionist') && (
-              <QuickStatsCard title="Today's Appointments" value={dashboardData.todaysAppointments} icon={CalendarDays} />
-            )}
-            {(role === 'admin' || role === 'receptionist') && ( // Doctors typically don't see pending bills on main dashboard
-              <QuickStatsCard title="Pending Bills" value={dashboardData.pendingBills} icon={Briefcase} description="Feature in development" />
-            )}
-            {(role === 'admin' || role === 'doctor') && ( // For doctors, this shows count of high-risk patients
-               <QuickStatsCard
-                  title={role === 'doctor' ? "High-Risk Patients" : "Critical System Alerts"}
-                  value={dashboardData.criticalAlerts} // Use the count from getCriticalAlertsCount
-                  icon={role === 'doctor' ? ShieldAlert : AlertCircle}
-                  description={role === 'doctor' ? "Needs follow-up" : "Count from critical tags"}
-                />
-            )}
-          </div>
-        ) : !loadingData && !fetchError && ( // Handle case where data is null but no error (e.g., initial state)
-           <p className="text-muted-foreground">No overview data available.</p>
-        )}
-
-        {(role === 'admin' || role === 'doctor' || role === 'receptionist') && (
-          loadingData ? <Skeleton className="h-[450px] mb-8" /> :
-          !fetchError ? <AppointmentCalendarWidget /> : null // Show only if no error
-        )}
-
-
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 mt-8">
-          <div className="lg:col-span-2 space-y-8">
-            {loadingData ? (
-                <Skeleton className="h-96" />
-            ) : dashboardData && !fetchError && (role === 'admin' || role === 'doctor' || role === 'receptionist') ? (
-              <UpcomingAppointmentsWidget appointments={dashboardData.upcomingAppointments} />
-            ) : !loadingData && !fetchError && ( // Handle empty state
-                <p className="text-muted-foreground">No upcoming appointments.</p>
-            )}
-
-            {(role === 'admin' || role === 'doctor') && (
-              loadingData ? <Skeleton className="h-64" /> :
-              !fetchError ? (
-                  <AnalyticsPlaceholderWidget
-                    title="Patients by Condition"
-                    icon={PieChartIcon}
-                    description="Distribution of patients based on their tagged conditions."
-                    chartType="pie"
-                    // Ensure data and config are passed only when available
-                    data={patientsByConditionChartData.length > 0 ? patientsByConditionChartData : undefined}
-                    chartConfig={Object.keys(patientsByConditionChartConfig).length > 1 ? patientsByConditionChartConfig : undefined} // Ensure more than just 'count' key exists
-                    categoryKey="name"
-                    dataKey="count"
+              {(role === 'admin' || role === 'doctor' || role === 'receptionist') && (
+                <QuickStatsCard title="Total Patients" value={dashboardData.totalPatients} icon={Users} />
+              )}
+              {(role === 'admin' || role === 'doctor' || role === 'receptionist') && (
+                <QuickStatsCard title="Today's Appointments" value={dashboardData.todaysAppointments} icon={CalendarDays} />
+              )}
+              {(role === 'admin' || role === 'receptionist') && ( 
+                <QuickStatsCard title="Pending Bills" value={dashboardData.pendingBills} icon={Briefcase} description="Feature in development" />
+              )}
+              {(role === 'admin' || role === 'doctor') && ( 
+                 <QuickStatsCard
+                    title={role === 'doctor' ? "High-Risk Patients" : "Critical System Alerts"}
+                    value={dashboardData.criticalAlerts} 
+                    icon={role === 'doctor' ? ShieldAlert : AlertCircle}
+                    description={role === 'doctor' ? "Needs follow-up" : "Count from critical tags"}
                   />
-              ) : null // Don't render if error
-            )}
+              )}
+            </div>
+          ) : !loadingData && !fetchError && ( 
+             <p className="text-muted-foreground">No overview data available.</p>
+          )}
 
-             {/* High-Risk Patients Widget for Doctors and Admins */}
-            {(role === 'admin' || role === 'doctor') && (
-              loadingData ? <Skeleton className="h-80 mt-8" /> :
-              dashboardData?.highRiskPatients && !fetchError ? <HighRiskPatientsWidget patients={dashboardData.highRiskPatients} /> :
-              !loadingData && !fetchError && <p className="text-muted-foreground">No high-risk patients data available.</p>
-            )}
+          {(role === 'admin' || role === 'doctor' || role === 'receptionist') && (
+            loadingData ? <Skeleton className="h-[450px] mb-8" /> :
+            !fetchError ? <AppointmentCalendarWidget /> : null 
+          )}
 
-          </div>
 
-          <div className="lg:col-span-1 space-y-8">
-            {loadingData ? (
-                <Skeleton className="h-80" />
-            ) : dashboardData && !fetchError && (role === 'admin' || role === 'doctor' || role === 'receptionist') ? (
-              <RecentActivitiesWidget activities={dashboardData.recentActivities} />
-            ) : !loadingData && !fetchError && (
-               <p className="text-muted-foreground">No recent activities.</p>
-            )}
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 mt-8">
+            <div className="lg:col-span-2 space-y-8">
+              {loadingData ? (
+                  <Skeleton className="h-96" />
+              ) : dashboardData && !fetchError && (role === 'admin' || role === 'doctor' || role === 'receptionist') ? (
+                <UpcomingAppointmentsWidget appointments={dashboardData.upcomingAppointments} />
+              ) : !loadingData && !fetchError && ( 
+                  <p className="text-muted-foreground">No upcoming appointments.</p>
+              )}
 
-            {/* Billing Summary only for Admin and Receptionist */}
-            {(role === 'admin' || role === 'receptionist') && (
-                 loadingData ? <Skeleton className="h-72" /> :
-                 !fetchError ? <BillingSummaryWidget /> : null
-            )}
-
-            {role === 'admin' && (
-                 loadingData ? <Skeleton className="h-64" /> :
-                 !fetchError ? (
-                    <SystemHealthWidget
-                        lastBackup="Today, 02:00 AM" // Placeholder - fetch dynamically if needed
-                        activeIntegrations={[{name: 'Twilio SMS', status: 'active'}, {name: 'Payment Gateway', status: 'error'}, { name: 'OCT Device Sync', status: 'inactive'}]} // Placeholder
-                        errorLogsCount={2} // Placeholder
+              {(role === 'admin' || role === 'doctor') && (
+                loadingData ? <Skeleton className="h-64" /> :
+                !fetchError ? (
+                    <AnalyticsPlaceholderWidget
+                      title="Patients by Condition"
+                      icon={PieChartIcon}
+                      description="Distribution of patients based on their tagged conditions."
+                      chartType="pie"
+                      data={patientsByConditionChartData.length > 0 ? patientsByConditionChartData : undefined}
+                      chartConfig={Object.keys(patientsByConditionChartConfig).length > 1 ? patientsByConditionChartConfig : undefined} 
+                      categoryKey="name"
+                      dataKey="count"
                     />
-                  ) : null
-            )}
+                ) : null 
+              )}
+
+              {(role === 'admin' || role === 'doctor') && (
+                loadingData ? <Skeleton className="h-80 mt-8" /> :
+                dashboardData?.highRiskPatients && !fetchError ? <HighRiskPatientsWidget patients={dashboardData.highRiskPatients} /> :
+                !loadingData && !fetchError && <p className="text-muted-foreground">No high-risk patients data available.</p>
+              )}
+            </div>
+
+            <div className="lg:col-span-1 space-y-8">
+              {loadingData ? (
+                  <Skeleton className="h-80" />
+              ) : dashboardData && !fetchError && (role === 'admin' || role === 'doctor' || role === 'receptionist') ? (
+                <RecentActivitiesWidget activities={dashboardData.recentActivities} />
+              ) : !loadingData && !fetchError && (
+                 <p className="text-muted-foreground">No recent activities.</p>
+              )}
+
+              {(role === 'admin' || role === 'receptionist') && (
+                   loadingData ? <Skeleton className="h-72" /> :
+                   !fetchError ? <BillingSummaryWidget /> : null
+              )}
+
+              {role === 'admin' && (
+                   loadingData ? <Skeleton className="h-64" /> :
+                   !fetchError ? (
+                      <SystemHealthWidget
+                          lastBackup="Today, 02:00 AM" 
+                          activeIntegrations={[{name: 'Twilio SMS', status: 'active'}, {name: 'Payment Gateway', status: 'error'}, { name: 'OCT Device Sync', status: 'inactive'}]} 
+                          errorLogsCount={2} 
+                      />
+                    ) : null
+              )}
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* Role Specific Sections - Show only if no loading/error */}
-      {!loadingData && !fetchError && (
-          <>
-            {role === "doctor" && (
-                <Card className="mt-8">
-                <CardHeader>
-                    <CardTitle>Doctor's Corner</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p>Review your upcoming schedule, patient alerts, and AI-assisted diagnostic summaries.</p>
-                    {/* Filter doctor specific upcoming appointments for display here */}
-                    {dashboardData?.upcomingAppointments && dashboardData.upcomingAppointments.length > 0 ? (
-                        <div className="mt-4">
-                            <h3 className="font-semibold mb-2">Your Upcoming Appointments:</h3>
-                            <ul className="space-y-2">
-                            {dashboardData.upcomingAppointments.map(apt => (
-                                <li key={apt.id} className="text-sm p-2 bg-secondary/50 rounded-md">{apt.date} at {apt.time} with {apt.patientName}</li>
-                            ))}
-                            </ul>
-                        </div>
-                    ) : (
-                        <p className="text-muted-foreground mt-4">You have no upcoming appointments today based on current filters.</p>
-                    )}
-                    <Button asChild className="mt-4">
-                        <Link href="/analyze-scan">Access AI Diagnostic Tools</Link>
-                    </Button>
-                </CardContent>
-                </Card>
-            )}
-            {role === "patient" && (
-                <Card className="mt-8">
-                <CardHeader>
-                    <CardTitle>Patient Portal</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p>View your upcoming appointments and recent medical records.</p>
-                    {dashboardData?.upcomingAppointments && dashboardData.upcomingAppointments.filter(apt => apt.patientName === user.displayName || apt.patientName === user.email).length > 0 ? (
-                        <div className="mt-4">
-                            <h3 className="font-semibold mb-2">Your Upcoming Appointments:</h3>
-                            <ul className="space-y-2">
-                            {dashboardData.upcomingAppointments.filter(apt => apt.patientName === user.displayName || apt.patientName === user.email).map(apt => (
-                                <li key={apt.id} className="text-sm p-2 bg-secondary/50 rounded-md">{apt.date} at {apt.time} with {apt.doctorName}</li>
-                            ))}
-                            </ul>
-                        </div>
-                    ) : (
-                        <p className="text-muted-foreground mt-4">You have no upcoming appointments.</p>
-                    )}
-                </CardContent>
-                </Card>
-            )}
-          </>
       )}
 
+      {role === "patient" && (
+         <div className="space-y-8 mt-8">
+            <h2 className="text-2xl font-semibold text-foreground mb-2">Your Health Portal</h2>
+            {loadingData ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...Array(6)].map((_, i) => <Skeleton key={`patient-skeleton-${i}`} className="h-60" />)}
+                </div>
+            ) : !fetchError && dashboardData ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <PatientUpcomingAppointmentsWidget appointments={dashboardData.upcomingAppointments}/>
+                    <PatientPrescriptionsWidget />
+                    <PatientMedicalRecordsWidget /> {/* Renamed from PatientVisitHistoryWidget for clarity */}
+                    <PatientBillingHistoryWidget />
+                    <PatientBookAppointmentWidget />
+                    <PatientUploadDocsWidget />
+                    <PatientTeleconsultWidget />
+                    <PatientMessagesWidget />
+                    <PatientReportsWidget />
+                </div>
+            ) : !loadingData && fetchError && (
+                 <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{fetchError || "Could not load your dashboard information."}</AlertDescription>
+                 </Alert>
+            )}
+         </div>
+      )}
     </div>
   );
 }
