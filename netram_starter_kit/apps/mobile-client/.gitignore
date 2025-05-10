@@ -1,0 +1,30 @@
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+# Bundler
+.metro-cache
+# Android
+android/app/build/
+android/app/.cxx/
+android/app/.externalNativeBuild/
+android/.gradle/
+android/build/
+android/gradle.properties
+android/local.properties
+android/captures/
+# iOS
+ios/Pods/
+ios/build/
+ios/.xcode.env.local
+# macOS
+.DS_Store
+# Others
+*.js.map
+*.private
+coverage/
+# Environment variables
+.env
+.env.*
